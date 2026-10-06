@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+renv/
+
+# Secrets
+.env
+
+# Big raw downloads (the small processed CSVs in data/processed ARE committed, they are our hand-offs)
+data/raw/*
+!data/raw/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
