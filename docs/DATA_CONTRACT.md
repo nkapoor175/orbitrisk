@@ -69,6 +69,21 @@ One row per conjunction, method and error model.
 | n_samples | Number of Monte Carlo samples (blank for `exact`) |
 | runtime_s | Wall-clock seconds |
 
+## catalog_snapshot.csv  (written by `python/01_download.py`, Navika, in data/raw/; read by `python/04`)
+
+Latest TLE of every payload and debris object in the orbital shell.
+
+| Column | Meaning |
+| --- | --- |
+| norad_id | NORAD catalogue number |
+| object_name | Name from the catalogue |
+| object_type | `satellite` or `debris` |
+| epoch_utc | TLE epoch (UTC) |
+| bstar | BSTAR drag term |
+| inclination_deg | Inclination |
+| mean_motion_rev_day | Mean motion, revolutions per day |
+| line1, line2 | The two TLE lines |
+
 ## Other files
 
 `pc_radius_sensitivity.csv` (Parthvi): `conj_id, radius_m, error_model, pc`.

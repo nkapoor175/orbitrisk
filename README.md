@@ -41,11 +41,11 @@ Or one script at a time, in this order:
 
 | Step | Command | Reads | Writes |
 | --- | --- | --- | --- |
-| 1 | `python python/01_download.py` | Space-Track | `data/raw/tle_history.csv` |
-| 2 | `python python/02_clean.py` | raw TLEs | `data/processed/tle_clean.csv` |
-| 3 | `python python/03_residuals.py` | clean TLEs | `data/processed/residuals.csv` |
+| 1 | `python python/01_download.py` | Space-Track | `data/raw/catalog_snapshot.csv`, `data/raw/tle_history.csv` |
+| 2 | `python python/02_clean.py` | `tle_history.csv` | `data/processed/tle_clean.csv` |
+| 3 | `python python/03_residuals.py` | `tle_clean.csv` | `data/processed/residuals.csv` |
 | 4 | `Rscript r/10_error_model.R` | `residuals.csv` | `data/processed/params.csv` |
-| 5 | `python python/04_screen_conjunctions.py` | clean TLEs | `data/processed/conjunctions.csv` |
+| 5 | `python python/04_screen_conjunctions.py` | `catalog_snapshot.csv` | `data/processed/conjunctions.csv` |
 | 6 | `python python/05_exact_pc.py` | conjunctions, params | `data/processed/pc_exact.csv` |
 | 7 | `python python/06_monte_carlo.py` | conjunctions, params | `data/processed/pc_mc.csv` |
 | 8 | `python python/07_importance_sampling.py` | conjunctions, params | `data/processed/pc_is.csv` |
@@ -56,6 +56,11 @@ Or one script at a time, in this order:
 | 13 | `Rscript r/14_plots.R` | everything above | final `figures/` |
 
 The exact column names of every CSV are fixed in [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md). Do not change a column name without telling the people who read that file.
+
+## Testing before Space-Track data is ready
+
+`python python/make_synthetic_tles.py` writes a FAKE `data/raw/tle_history.csv` so steps 2 and 3 (and the R scripts) can be tested.
+It is for testing only: never use fake data for results in the report. Delete `data/raw/tle_history.csv` before the real download.
 
 ## Folder structure
 
@@ -72,7 +77,8 @@ orbitrisk/
   data/
     raw/                  downloaded TLEs (not committed, too big)
     processed/            hand-off CSVs between teammates (committed, small)
-  python/                 01_download.py ... 08_bayes_and_sensitivity.py, common.py
+  python/                 01_download.py ... 08_bayes_and_sensitivity.py, common.py, orbit_utils.py,
+                          make_synthetic_tles.py (fake data for testing only)
   r/                      10_error_model.R ... 14_plots.R, common.R
   figures/                every figure used in the report
   report/                 IEEE paper, plagiarism report
