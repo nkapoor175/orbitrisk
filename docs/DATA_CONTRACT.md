@@ -37,22 +37,33 @@ Fitted error model: `sigma(age) = a * age_days ^ b` per direction, for both the 
 
 ## conjunctions.csv  (written by `python/04_screen_conjunctions.py`, Navika; read by Parthvi and Vishi)
 
-One row per close approach found by screening.
+One row per satellite-debris close approach found by screening (miss distance below `SCREEN_DISTANCE_KM`).
+Object 1 is always the satellite, object 2 the debris. Positions are in the SGP4 TEME frame.
 
 | Column | Meaning |
 | --- | --- |
 | conj_id | Unique integer id |
-| norad_id_1 | First object (the satellite) |
-| norad_id_2 | Second object (the debris) |
+| norad_id_1 | The satellite |
+| norad_id_2 | The debris |
 | tca_utc | Time of closest approach (ISO 8601) |
 | miss_distance_km | Distance at closest approach |
 | rel_speed_kms | Relative speed at closest approach |
-| enc_x_km | Miss vector component 1 in the encounter plane |
-| enc_y_km | Miss vector component 2 in the encounter plane |
-| age1_days | TLE age of object 1 at TCA |
-| age2_days | TLE age of object 2 at TCA |
+| enc_x_km | Miss vector (object 2 minus object 1) along x_hat of the encounter plane |
+| enc_y_km | Miss vector along y_hat of the encounter plane |
+| age1_days | TLE age of the satellite at TCA (days since its TLE epoch) |
+| age2_days | TLE age of the debris at TCA |
 | altitude_km | Altitude at TCA |
-| radius_m | Combined hard-body radius used |
+| radius_m | Combined hard-body radius used (satellite plus debris) |
+| r1_x_km, r1_y_km, r1_z_km | Satellite position at TCA |
+| v1_x_kms, v1_y_kms, v1_z_kms | Satellite velocity at TCA |
+| r2_x_km, r2_y_km, r2_z_km | Debris position at TCA |
+| v2_x_kms, v2_y_kms, v2_z_kms | Debris velocity at TCA |
+
+Encounter plane convention: `z_hat` = direction of the relative velocity (debris minus satellite), the plane is perpendicular to it,
+`x_hat` = the part of the satellite's orbit normal that lies in the plane, `y_hat` = z_hat cross x_hat.
+Do not rebuild this yourself: use `encounter_basis()` and `project_covariance_to_plane()` from `python/orbit_utils.py`.
+To get the combined 2x2 covariance for a conjunction, give `project_covariance_to_plane()` the two states and the
+(radial, along-track, cross-track) sigmas of each object from `params.csv` at that object's TLE age.
 
 ## pc_results.csv  (written by `python/08_bayes_and_sensitivity.py`, Parthvi; read by Vishi)
 

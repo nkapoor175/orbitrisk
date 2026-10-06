@@ -39,7 +39,11 @@ RESIDUAL_MAX_KM = 100.0           # drop pairs with any error component bigger t
 
 # --- Conjunction screening (04_screen_conjunctions.py) ------------------------------------
 SCREEN_DAYS = 7                   # look-ahead window
-SCREEN_DISTANCE_KM = 10.0         # keep close approaches below this miss distance
+SCREEN_START_UTC = None           # None = start at the newest TLE epoch in the snapshot (reproducible)
+SCREEN_STEP_S = 30                # coarse time step of the screening
+SCREEN_DISTANCE_KM = 5.0          # keep close approaches below this miss distance
+SCREEN_MARGIN_KM = 5.0            # extra margin for the coarse (straight-line) estimate, refined afterwards
+MIN_REL_SPEED_KMS = 0.5           # slower pairs are co-orbiting objects, not real short encounters: dropped
 
 # --- Assumptions to justify in the report and vary in the sensitivity study ---------------
 HARD_BODY_RADIUS_M = {"satellite": 2.0, "debris": 0.5}
