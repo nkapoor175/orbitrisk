@@ -1,0 +1,7 @@
+component,model,a,b,nu,aic,n_obs
+radial,gaussian,0.0424793,0.970138,,,145467
+radial,student_t,0.0339835,0.970138,4,,145467
+along,gaussian,0.122758,1.12041,,,145467
+along,student_t,0.0982067,1.12041,4,,145467
+cross,gaussian,0.0474377,1.00001,,,145467
+cross,student_t,0.0379502,1.00001,4,,145467
