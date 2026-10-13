@@ -1,14 +1,19 @@
 
 # 10_error_model.R -- OWNER: Vishi
-# Fit age-dependent Student-t and Gaussian error models.
-# Run from repository root:
-# Rscript r/10_error_model.R
+#
+# Purpose: Fit age-dependent Gaussian and Student-t orbital error models.
+# Reads: data/processed/residuals.csv
+# Writes: data/processed/error_model_fit.csv,
+#         data/processed/params.csv, figures/
+# Status: Initial implementation with Python-compatible parameter output.
+# Run from repository root: Rscript r/10_error_model.R
 
 source("r/common.R")
 
 set.seed(SEED)
 
 input_file <- file.path(PROCESSED, "residuals.csv")
+error_model_file <- file.path(PROCESSED, "error_model_fit.csv")
 output_file <- file.path(PROCESSED, "params.csv")
 
 if (!file.exists(input_file)) {
@@ -128,6 +133,11 @@ fit_direction <- function(column, direction) {
   })
 
   bins <- Filter(Negate(is.null), bins)
+
+  if (length(bins) == 0) {
+    stop("No usable age bins for direction: ", direction)
+  }
+
   bins <- do.call(rbind, bins)
 
   if (is.null(bins) || nrow(bins) < 3) {
@@ -290,20 +300,49 @@ results <- do.call(
   })
 )
 
-# Save fitted parameters and comparison statistics.
+# Save the wide model-fitting results for the R comparison script.
 write.csv(
   results,
-  output_file,
+  error_model_file,
   row.names = FALSE
+)
+
+# Build the six-row parameter table expected by the Python pipeline.
+gaussian_params <- data.frame(
+  component = results$direction,
+  model = "gaussian",
+  a = results$a * results$gaussian_sd,
+  b = results$b,
+  nu = NA_real_,
+  aic = results$AIC_gaussian,
+  n_obs = results$n
+)
+
+student_params <- data.frame(
+  component = results$direction,
+  model = "student_t",
+  a = results$a * results$student_scale,
+  b = results$b,
+  nu = results$student_df,
+  aic = results$AIC_student,
+  n_obs = results$n
+)
+
+params <- rbind(gaussian_params, student_params)
+
+# Save parameters in the shared Python data-contract format.
+write.csv(
+  params,
+  output_file,
+  row.names = FALSE,
+  na = ""
 )
 
 cat("\nError-model fitting complete.\n")
 cat("Valid observations:", nrow(dat), "\n")
-cat("Parameters saved to:", output_file, "\n\n")
+cat("Wide model results saved to:", error_model_file, "\n")
+cat("Python contract parameters saved to:", output_file, "\n\n")
 
-print(results, row.names = FALSE)
+print(params, row.names = FALSE)
 
 cat("\nDiagnostic plots saved to:", FIGURES, "\n")
-
-
-
