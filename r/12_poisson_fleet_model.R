@@ -155,6 +155,13 @@ dat$high_risk <- dat$Pc >= ALERT_THRESHOLD
 
 # Expected collision count under the rare-event approximation.
 expected_collision_count <- sum(dat$Pc)
+prob_at_least_one_collision <- 1 - exp(-sum(dat$Pc))
+
+cat(
+  "Probability of at least one fleet collision:",
+  prob_at_least_one_collision,
+  "\n"
+)
 observed_high_risk <- sum(dat$high_risk)
 
 summary_rows <- list(
