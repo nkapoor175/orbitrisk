@@ -454,24 +454,25 @@ if (!is.null(convergence)) {
         ]
 
         if (nrow(group_data) > 0) {
-          lines(
-            group_data$n_samples,
-            group_data$pc,
-            type = "b",
-            pch = 16
-          )
+              lines(
+                group_data$n_samples,
+                group_data$pc,
+                type = "b",
+                pch = 16,
+                col = i
+              )
         }
       }
 
       if (length(groups) <= 10) {
-        legend(
-          "topright",
-          legend = groups,
-          lty = 1,
-          pch = 16,
-          cex = 0.7,
-          bty = "n"
-        )
+              legend(
+        "topright",
+        legend = groups,
+        col = seq_along(groups),
+        lty = 1,
+        pch = 16,
+        cex = 0.7
+      )
       }
 
       dev.off()
