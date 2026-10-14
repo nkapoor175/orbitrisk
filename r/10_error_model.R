@@ -74,7 +74,7 @@ dat$age_bin <- cut(
 
 # Student-t negative log-likelihood.
 # par[1] = location
-# par[2] = log(nu - 2)
+# par[2] = log(nu)
 # par[3] = log(scale)
 student_nll <- function(par, z) {
   location <- par[1]
@@ -216,7 +216,7 @@ fit_direction <- function(column, direction) {
   }
 
   student_location <- opt$par[1]
-  nu <- 2 + exp(opt$par[2])
+  nu <- exp(opt$par[2])
   t_scale <- exp(opt$par[3])
   ll_student <- -opt$value
 
