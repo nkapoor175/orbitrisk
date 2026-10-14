@@ -78,12 +78,13 @@ dat$age_bin <- cut(
 # par[3] = log(scale)
 student_nll <- function(par, z) {
   location <- par[1]
-  nu <- 2 + exp(par[2])
+  nu <-  exp(par[2])
   scale <- exp(par[3])
 
-  if (!is.finite(nu) || !is.finite(scale) || scale <= 0) {
-    return(Inf)
-  }
+ if (!is.finite(nu) || nu <= 0 ||
+    !is.finite(scale) || scale <= 0) {
+  return(Inf)
+}
 
   value <- -sum(
     dt(
