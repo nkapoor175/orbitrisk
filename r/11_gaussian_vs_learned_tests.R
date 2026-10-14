@@ -79,7 +79,7 @@ fit_distributions <- function(z) {
 
   student_nll <- function(par) {
     location <- par[1]
-    nu <- 2 + exp(par[2])
+    nu <- exp(par[2])
     scale <- exp(par[3])
 
     if (!is.finite(nu) || !is.finite(scale) || scale <= 0) {
@@ -112,7 +112,7 @@ fit_distributions <- function(z) {
     gaussian_sd = gs,
     gaussian_loglik = gaussian_loglik,
     student_location = opt$par[1],
-    student_df = 2 + exp(opt$par[2]),
+    student_df =  exp(opt$par[2]),
     student_scale = exp(opt$par[3]),
     student_loglik = -opt$value
   )

@@ -89,7 +89,7 @@ fit_scale <- function(age, x) {
 # Fit Student-t location, degrees of freedom and scale by MLE.
 student_nll <- function(par, z) {
   location <- par[1]
-  nu <- 2 + exp(par[2])
+  nu <-  exp(par[2])
   scale <- exp(par[3])
   -sum(dt((z - location) / scale, df = nu, log = TRUE) - log(scale))
 }
@@ -114,7 +114,7 @@ fit_distribution <- function(z) {
     gaussian_mean = gaussian_mean,
     gaussian_sd = gaussian_sd,
     student_location = opt$par[1],
-    student_df = 2 + exp(opt$par[2]),
+    student_df = exp(opt$par[2]),
     student_scale = exp(opt$par[3])
   )
 }
