@@ -1,7 +1,13 @@
 
 # ============================================================
-# r/14_plots.R
-# OrbitRisk: Statistical plots and diagnostic summaries
+# Purpose: OrbitRisk statistical plots and diagnostic summaries
+# Reads: data/processed/residuals.csv, pc_results.csv,
+#        mc_convergence.csv, fleet_risk/fleet_risk_summary.csv
+# Writes: final_error_growth_*.png, final_roc_curve.png,
+#         roc_summary.csv, mc_convergence.png
+# Status: Optional plots are skipped when their input data
+#         is unavailable or insufficient.
+# Run from the repo root: Rscript r/14_plots.R
 # ============================================================
 
 source(file.path("r", "common.R"))
@@ -9,155 +15,210 @@ source(file.path("r", "common.R"))
 dir.create(FIGURES, showWarnings = FALSE, recursive = TRUE)
 dir.create(PROCESSED, showWarnings = FALSE, recursive = TRUE)
 
-# ------------------------------------------------------------
-# Helper: read a CSV only when it exists
-# ------------------------------------------------------------
-
 read_csv_if_exists <- function(path) {
   if (!file.exists(path)) {
     warning(sprintf("File not found; skipping: %s", path))
     return(NULL)
   }
-
   read.csv(path, stringsAsFactors = FALSE)
 }
 
 # ------------------------------------------------------------
-# 1. Error scale growth plots
+# 1. Binned error growth plots
+# Median absolute residual per TLE-age bin, with log-log axes
 # ------------------------------------------------------------
 
 residual_file <- file.path(PROCESSED, "residuals.csv")
 residuals <- read_csv_if_exists(residual_file)
 
 if (!is.null(residuals)) {
-  required <- c("age", "radial", "along", "cross")
+  required <- c(
+    "age_days",
+    "d_radial_km",
+    "d_along_km",
+    "d_cross_km"
+  )
 
-  if (all(required %in% names(residuals))) {
-    directions <- c("radial", "along", "cross")
-
-    for (direction in directions) {
-      plot_data <- residuals[
-        is.finite(residuals$age) &
-          is.finite(residuals[[direction]]),
-        ,
-        drop = FALSE
-      ]
-
-      # Logarithmic axes require positive values.
-      plot_data <- plot_data[
-        plot_data$age > 0 &
-          abs(plot_data[[direction]]) > 0,
-        ,
-        drop = FALSE
-      ]
-
-      if (nrow(plot_data) > 0) {
-        png(
-          file.path(
-            FIGURES,
-            paste0("residual_growth_", direction, ".png")
-          ),
-          width = 1000,
-          height = 700
-        )
-
-        plot(
-          plot_data$age,
-          abs(plot_data[[direction]]),
-          log = "xy",
-          pch = 16,
-          cex = 0.5,
-          xlab = "Conjunction age",
-          ylab = paste("Absolute", direction, "residual"),
-          main = paste("Residual growth:", direction)
-        )
-
-        dev.off()
-      }
-    }
-  } else {
+  if (!all(required %in% names(residuals))) {
     warning(
       "Residual growth plots skipped: residuals.csv must contain ",
-      "age, radial, along, and cross."
+      paste(required, collapse = ", ")
     )
+  } else {
+    directions <- c(
+      radial = "d_radial_km",
+      along = "d_along_km",
+      cross = "d_cross_km"
+    )
+
+    age <- suppressWarnings(as.numeric(residuals$age_days))
+    n_bins <- 20
+
+    valid_age <- age[is.finite(age) & age > 0]
+
+    if (length(valid_age) == 0) {
+      warning(
+        "Residual growth plots skipped: no positive finite TLE ages."
+      )
+    } else {
+      breaks <- unique(
+        as.numeric(
+          quantile(
+            valid_age,
+            probs = seq(0, 1, length.out = n_bins + 1),
+            na.rm = TRUE,
+            names = FALSE
+          )
+        )
+      )
+
+      if (length(breaks) < 3) {
+        warning(
+          "Residual growth plots skipped: insufficient distinct ages."
+        )
+      } else {
+        age_bin <- cut(
+          age,
+          breaks = breaks,
+          include.lowest = TRUE,
+          labels = FALSE
+        )
+
+        for (direction in names(directions)) {
+          residual_column <- directions[[direction]]
+          errors <- suppressWarnings(
+            as.numeric(residuals[[residual_column]])
+          )
+
+          valid <- is.finite(age) &
+            age > 0 &
+            is.finite(errors) &
+            !is.na(age_bin)
+
+          bin_ids <- sort(unique(age_bin[valid]))
+
+          binned <- do.call(
+            rbind,
+            lapply(bin_ids, function(bin_id) {
+              idx <- valid & age_bin == bin_id
+              data.frame(
+                age_days = median(age[idx], na.rm = TRUE),
+                median_abs_error_km = median(
+                  abs(errors[idx]),
+                  na.rm = TRUE
+                ),
+                n = sum(idx)
+              )
+            })
+          )
+
+          # Log-log plots require strictly positive values.
+          binned <- binned[
+            is.finite(binned$age_days) &
+              binned$age_days > 0 &
+              is.finite(binned$median_abs_error_km) &
+              binned$median_abs_error_km > 0,
+            ,
+            drop = FALSE
+          ]
+
+          if (nrow(binned) < 2) {
+            warning(
+              "Residual growth plot skipped for ", direction,
+              ": fewer than two positive age-bin medians."
+            )
+            next
+          }
+
+          png(
+            file.path(
+              FIGURES,
+              paste0("final_error_growth_", direction, ".png")
+            ),
+            width = 1000,
+            height = 700
+          )
+
+          plot(
+            binned$age_days,
+            binned$median_abs_error_km,
+            log = "xy",
+            type = "b",
+            pch = 16,
+            xlab = "TLE age (days)",
+            ylab = "Median absolute error (km)",
+            main = paste("Error growth:", direction)
+          )
+
+          dev.off()
+        }
+
+        cat("Section 1: binned error-growth plots processed.\n")
+      }
+    }
   }
 }
 
-# Model-comparison Q-Q plots are generated by
-# r/11_gaussian_vs_learned_tests.R.
-# Do not pool raw residuals across different ages here.
+# Model-comparison Q-Q plots are generated by r/11.
+# Raw residuals from different ages are not pooled here.
 
 # ------------------------------------------------------------
-# 2. ROC / alert-threshold comparison
-#
-# Labels: method == "is", error_model == "student_t",
-#         Student-t Pc >= ALERT_THRESHOLD
-# Scores: Gaussian Pc for the same conj_id, using method == "is"
+# 2. ROC curve and alert-threshold comparison
+# Labels: Student-t Pc >= ALERT_THRESHOLD, method == "is"
+# Scores: Gaussian Pc for the same conj_id, method == "is"
 # ------------------------------------------------------------
 
 results_file <- file.path(PROCESSED, "pc_results.csv")
+pc_results <- read_csv_if_exists(results_file)
 
-if (!file.exists(results_file)) {
-  warning(
-    "ROC analysis skipped: pc_results.csv is missing. ",
-    "Student-t probability results are required."
-  )
-} else {
-  pc_results <- read.csv(
-    results_file,
-    stringsAsFactors = FALSE
-  )
-
+if (!is.null(pc_results)) {
   required <- c("conj_id", "method", "error_model", "pc")
 
   if (!all(required %in% names(pc_results))) {
     warning(
-      "ROC analysis skipped: pc_results.csv must contain: ",
+      "ROC analysis skipped: pc_results.csv must contain ",
       paste(required, collapse = ", ")
     )
   } else {
-    # Use importance-sampling results for both models.
-    dat <- pc_results[
-      tolower(trimws(pc_results$method)) == "is" &
-        tolower(trimws(pc_results$error_model)) %in%
-          c("student_t", "gaussian"),
-      required,
+    pc_results$pc <- suppressWarnings(as.numeric(pc_results$pc))
+    pc_results$method <- tolower(trimws(pc_results$method))
+    pc_results$error_model <- tolower(trimws(pc_results$error_model))
+
+    selected <- pc_results[
+      pc_results$method == "is" &
+        pc_results$error_model %in% c("student_t", "gaussian"),
+      ,
       drop = FALSE
     ]
 
-    dat$pc <- suppressWarnings(as.numeric(dat$pc))
-
-    student <- dat[
-      tolower(trimws(dat$error_model)) == "student_t",
+    student <- selected[
+      selected$error_model == "student_t",
       c("conj_id", "pc"),
       drop = FALSE
     ]
-
     names(student)[names(student) == "pc"] <- "student_pc"
 
-    gaussian <- dat[
-      tolower(trimws(dat$error_model)) == "gaussian",
+    gaussian <- selected[
+      selected$error_model == "gaussian",
       c("conj_id", "pc"),
       drop = FALSE
     ]
-
     names(gaussian)[names(gaussian) == "pc"] <- "gaussian_pc"
 
     if (nrow(student) == 0 || nrow(gaussian) == 0) {
       warning(
-        "ROC analysis skipped: both Student-t and Gaussian ",
-        "importance-sampling rows are required."
+        "ROC analysis skipped: Student-t and Gaussian method == 'is' ",
+        "rows are both required in pc_results.csv."
       )
     } else if (
       anyDuplicated(student$conj_id) > 0 ||
-        anyDuplicated(gaussian$conj_id) > 0
+      anyDuplicated(gaussian$conj_id) > 0
     ) {
       warning(
-        "ROC analysis skipped: duplicate conjunction IDs found ",
-        "within a model. Keep one result per conj_id and model."
+        "ROC analysis skipped: duplicate conj_id values within a model. ",
+        "Keep one importance-sampling result per conjunction and model."
       )
     } else {
-      # Match by conjunction ID, never by row order.
       roc_data <- merge(
         student,
         gaussian,
@@ -169,24 +230,19 @@ if (!file.exists(results_file)) {
         is.finite(roc_data$student_pc) &
           is.finite(roc_data$gaussian_pc) &
           roc_data$student_pc >= 0 &
-          roc_data$gaussian_pc >= 0 &
           roc_data$student_pc <= 1 &
+          roc_data$gaussian_pc >= 0 &
           roc_data$gaussian_pc <= 1,
         ,
         drop = FALSE
       ]
 
       if (nrow(roc_data) == 0) {
-        warning(
-          "ROC analysis skipped: no matching valid probability rows."
-        )
+        warning("ROC analysis skipped: no matching valid probabilities.")
       } else {
-        # Reference labels from Student-t Pc.
         roc_data$actual_alert <-
           roc_data$student_pc >= ALERT_THRESHOLD
 
-        # Gaussian Pc is the score; apply the same threshold
-        # for the false-alarm and missed-alert calculations.
         roc_data$predicted_alert <-
           roc_data$gaussian_pc >= ALERT_THRESHOLD
 
@@ -194,16 +250,74 @@ if (!file.exists(results_file)) {
         negatives <- sum(!roc_data$actual_alert)
 
         false_alarm_rate <- if (negatives > 0) {
-          mean(
-            roc_data$predicted_alert[!roc_data$actual_alert]
-          )
+          mean(roc_data$predicted_alert[!roc_data$actual_alert])
         } else {
           NA_real_
         }
 
         missed_alert_rate <- if (positives > 0) {
-          mean(
-            !roc_data$predicted_alert[roc_data$actual_alert]
+          mean(!roc_data$predicted_alert[roc_data$actual_alert])
+        } else {
+          NA_real_
+        }
+
+        # Sweep Gaussian Pc thresholds to build the ROC curve.
+        thresholds <- sort(
+          unique(c(
+            0,
+            roc_data$gaussian_pc,
+            1
+          )),
+          decreasing = TRUE
+        )
+
+        roc_points <- do.call(
+          rbind,
+          lapply(thresholds, function(threshold) {
+            predicted <- roc_data$gaussian_pc >= threshold
+
+            data.frame(
+              threshold = threshold,
+              tpr = if (positives > 0) {
+                sum(predicted & roc_data$actual_alert) / positives
+              } else {
+                NA_real_
+              },
+              fpr = if (negatives > 0) {
+                sum(predicted & !roc_data$actual_alert) / negatives
+              } else {
+                NA_real_
+              }
+            )
+          })
+        )
+
+        roc_points <- unique(roc_points)
+        roc_points <- roc_points[
+          is.finite(roc_points$tpr) &
+            is.finite(roc_points$fpr),
+          ,
+          drop = FALSE
+        ]
+
+        roc_points <- roc_points[
+          order(roc_points$fpr, roc_points$tpr),
+          ,
+          drop = FALSE
+        ]
+
+        # AUC by trapezoidal integration.
+        auc <- if (
+          positives > 0 &&
+          negatives > 0 &&
+          nrow(roc_points) >= 2
+        ) {
+          sum(
+            diff(roc_points$fpr) *
+              (
+                head(roc_points$tpr, -1) +
+                  tail(roc_points$tpr, -1)
+              ) / 2
           )
         } else {
           NA_real_
@@ -215,7 +329,8 @@ if (!file.exists(results_file)) {
           false_alarm_rate = false_alarm_rate,
           missed_alert_rate = missed_alert_rate,
           student_t_alerts = positives,
-          student_t_non_alerts = negatives
+          student_t_non_alerts = negatives,
+          auc = auc
         )
 
         write.csv(
@@ -224,46 +339,37 @@ if (!file.exists(results_file)) {
           row.names = FALSE
         )
 
-        cat("\nGaussian vs Student-t alert comparison:\n")
+        cat("\nGaussian vs Student-t ROC summary:\n")
         print(roc_summary)
 
-        # Probability comparison plot.
-        # Exclude zeros only from the log-scale plot.
-        plot_data <- roc_data[
-          roc_data$student_pc > 0 &
-            roc_data$gaussian_pc > 0,
-          ,
-          drop = FALSE
-        ]
-
-        if (nrow(plot_data) > 0) {
+        if (nrow(roc_points) >= 2) {
           png(
-            file.path(
-              FIGURES,
-              "gaussian_vs_student_t_alerts.png"
-            ),
+            file.path(FIGURES, "final_roc_curve.png"),
             width = 1000,
             height = 700
           )
 
           plot(
-            plot_data$student_pc,
-            plot_data$gaussian_pc,
-            log = "xy",
-            pch = 16,
-            cex = 0.5,
-            xlab = "Student-t importance-sampling Pc",
-            ylab = "Gaussian importance-sampling Pc",
-            main = "Gaussian vs Student-t collision probabilities"
+            roc_points$fpr,
+            roc_points$tpr,
+            type = "l",
+            lwd = 2,
+            xlim = c(0, 1),
+            ylim = c(0, 1),
+            xlab = "False positive rate",
+            ylab = "True positive rate",
+            main = sprintf("ROC curve (AUC = %.4f)", auc)
           )
 
-          abline(
-            v = ALERT_THRESHOLD,
-            h = ALERT_THRESHOLD,
-            lty = 2
+          abline(0, 1, lty = 2, col = "grey")
+          points(
+            false_alarm_rate,
+            1 - missed_alert_rate,
+            pch = 19
           )
 
           dev.off()
+          cat("ROC curve saved to figures/final_roc_curve.png\n")
         }
       }
     }
@@ -271,26 +377,54 @@ if (!file.exists(results_file)) {
 }
 
 # ------------------------------------------------------------
-# 3. Monte Carlo convergence diagnostic (optional)
+# 3. Monte Carlo convergence diagnostic
+# Uses named columns n_samples and pc
 # ------------------------------------------------------------
 
 convergence_file <- file.path(PROCESSED, "mc_convergence.csv")
 convergence <- read_csv_if_exists(convergence_file)
 
 if (!is.null(convergence)) {
-  numeric_columns <- names(convergence)[
-    vapply(convergence, is.numeric, logical(1))
-  ]
+  required <- c("n_samples", "pc")
 
-  if (nrow(convergence) > 0 &&
-      length(numeric_columns) >= 2) {
-    x_column <- numeric_columns[1]
-    y_column <- numeric_columns[2]
+  if (!all(required %in% names(convergence))) {
+    warning(
+      "Convergence plot skipped: mc_convergence.csv must contain ",
+      "n_samples and pc."
+    )
+  } else {
+    convergence$n_samples <- suppressWarnings(
+      as.numeric(convergence$n_samples)
+    )
+    convergence$pc <- suppressWarnings(as.numeric(convergence$pc))
 
-    valid <- is.finite(convergence[[x_column]]) &
-      is.finite(convergence[[y_column]])
+    valid <- is.finite(convergence$n_samples) &
+      convergence$n_samples > 0 &
+      is.finite(convergence$pc) &
+      convergence$pc >= 0
 
-    if (sum(valid) > 1) {
+    plot_data <- convergence[valid, , drop = FALSE]
+
+    # Plot each available method/model separately.
+    group_columns <- intersect(
+      c("method", "error_model", "conj_id"),
+      names(plot_data)
+    )
+
+    if (nrow(plot_data) < 2) {
+      warning("Convergence plot skipped: insufficient valid data.")
+    } else {
+      if (length(group_columns) == 0) {
+        plot_data$plot_group <- "all"
+      } else {
+        plot_data$plot_group <- do.call(
+          interaction,
+          c(plot_data[group_columns], list(drop = TRUE, sep = " / "))
+        )
+      }
+
+      groups <- unique(plot_data$plot_group)
+
       png(
         file.path(FIGURES, "mc_convergence.png"),
         width = 1000,
@@ -298,21 +432,51 @@ if (!is.null(convergence)) {
       )
 
       plot(
-        convergence[[x_column]][valid],
-        convergence[[y_column]][valid],
-        type = "l",
-        xlab = x_column,
-        ylab = y_column,
-        main = "Monte Carlo convergence diagnostic"
+        NA,
+        xlim = range(plot_data$n_samples),
+        ylim = range(plot_data$pc),
+        xlab = "Number of Monte Carlo samples",
+        ylab = "Collision probability (Pc)",
+        main = "Monte Carlo convergence",
+        log = if (all(plot_data$pc > 0)) "xy" else ""
       )
 
+      for (group in groups) {
+        group_data <- plot_data[
+          plot_data$plot_group == group,
+          ,
+          drop = FALSE
+        ]
+        group_data <- group_data[
+          order(group_data$n_samples),
+          ,
+          drop = FALSE
+        ]
+
+        if (nrow(group_data) > 0) {
+          lines(
+            group_data$n_samples,
+            group_data$pc,
+            type = "b",
+            pch = 16
+          )
+        }
+      }
+
+      if (length(groups) <= 10) {
+        legend(
+          "topright",
+          legend = groups,
+          lty = 1,
+          pch = 16,
+          cex = 0.7,
+          bty = "n"
+        )
+      }
+
       dev.off()
+      cat("Convergence plot saved to figures/mc_convergence.png\n")
     }
-  } else {
-    warning(
-      "Convergence plot skipped: insufficient numeric data ",
-      "in mc_convergence.csv."
-    )
   }
 }
 
@@ -320,23 +484,16 @@ if (!is.null(convergence)) {
 # 4. Fleet risk diagnostics
 # ------------------------------------------------------------
 
-fleet_file <- file.path(PROCESSED, "fleet_risk_summary.csv")
+fleet_file <- file.path(
+  PROCESSED,
+  "fleet_risk",
+  "fleet_risk_summary.csv"
+)
 fleet <- read_csv_if_exists(fleet_file)
 
 if (!is.null(fleet) && nrow(fleet) > 0) {
-  numeric_columns <- names(fleet)[
-    vapply(fleet, is.numeric, logical(1))
-  ]
-
-  if (length(numeric_columns) > 0) {
-    print(fleet)
-
-    cat(
-      "\nFleet risk summary loaded from:",
-      fleet_file,
-      "\n"
-    )
-  }
+  print(fleet)
+  cat("\nFleet risk summary loaded from:", fleet_file, "\n")
 }
 
 cat("\nr/14_plots.R completed.\n")
