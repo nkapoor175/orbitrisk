@@ -164,22 +164,26 @@ cat(
 )
 observed_high_risk <- sum(dat$high_risk)
 
+
 summary_rows <- list(
   data.frame(
     metric = c(
       "matched_valid_conjunctions",
       "high_risk_conjunctions",
       "alert_threshold",
-      "sum_collision_probabilities"
+      "sum_collision_probabilities",
+      "probability_at_least_one_fleet_collision"
     ),
     value = c(
       nrow(dat),
       observed_high_risk,
       ALERT_THRESHOLD,
-      expected_collision_count
+      expected_collision_count,
+      prob_at_least_one_collision
     )
   )
 )
+
 
 # Time-window analysis using valid timestamps.
 valid_times <- dat$event_time[!is.na(dat$event_time)]
