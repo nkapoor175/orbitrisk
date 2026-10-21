@@ -3,7 +3,7 @@
 Run from the repository root:
 
 ```sh
-python -B python/generate_results.py --is-samples 10000 --chunk-size 1000 --seed 42 --focus-ids 183 911 1198 --checkpoints 1000 2000 5000 10000 --radii-m 1 2.5 5 --radius-samples 100000 --backup-existing
+python -B python/generate_results.py --is-samples 100000 --chunk-size 1000 --seed 42 --focus-ids 183 911 1198 --checkpoints 1000 10000 100000 --radii-m 1 2.5 5 --radius-samples 100000 --backup-existing
 ```
 
 The generator preserves existing `pc_mc.csv` and corrected `pc_exact.csv`, reads
@@ -35,13 +35,16 @@ IS is the unbiased mean of likelihood-weighted collision contributions. Its 95%
 Hoeffding intervals are frequentist confidence intervals, not Bayesian credible
 intervals. They use analytic density/Jacobian upper bounds; observed maxima or ESS
 are not substituted for bounds. Intervals may be wide even when empirical standard
-errors are small. Full-catalogue IS uses 10,000 draws per conjunction/model, chosen
-after a small runtime benchmark; this is not a claim of uniform relative precision.
+errors are small. The current full-catalogue IS uses 100,000 draws per conjunction/model;
+the original 10,000-draw run was increased following review of Student-t precision.
+This is not a claim of uniform relative precision.
 
 Detailed convergence and radius sensitivity focus on conjunctions 183, 911 and
 1198, for both models. Convergence uses cumulative IS callbacks and deterministic
-MC prefixes at 1,000, 2,000, 5,000 and 10,000 draws, plus MC's existing 100,000-draw
-endpoint. Radius sensitivity uses 100,000 IS draws with one shared maximum-radius
+MC prefixes at 1,000, 10,000 and 100,000 draws, plus a 1,000,000-draw MC checkpoint.
+The million-sample rows are in `mc_convergence.csv` for both models on all three IDs;
+the catalogue MC file retains its original 100,000 draws. Additional MC checkpoints
+are configurable with `--mc-checkpoints`. Radius sensitivity uses 100,000 IS draws with one shared maximum-radius
 disk proposal for 1, 2.5 and 5 metres. Nested events guarantee nondecreasing estimates.
 The radius CSV has no method column; this run is exclusively IS. No full-catalogue
 radius sweep is implied. Each radius run has a separate deterministic stream.
@@ -70,7 +73,7 @@ This conservatively allows for accumulation/conversion roundoff, but does not
 certify scipy density calculations or ill-conditioned covariance calculations.
 No confidence claim uses zero empirical variance as proof of zero uncertainty.
 
-## Regenerated results
+## Initial 10,000-draw catalogue (superseded)
 
 All 8,172 events have exact Gaussian, Gaussian/Student-t MC and Gaussian/Student-t
 IS rows: `pc_results.csv` has 40,860 rows; `pc_is.csv` has 16,344. There are no
@@ -146,7 +149,8 @@ interpreter. On Windows activate `.venv/Scripts/Activate.ps1` in PowerShell or
 and Rscript on PATH. No POSIX-only interpreter path is hard-coded in the generator.
 
 Stage 3 runs exact Gaussian quadrature, script 06 with `--backup-existing`, then
-`generate_results.py --backup-existing`. The generator calls the IS and sensitivity
+`generate_results.py --is-samples 100000 --checkpoints 1000 10000 100000 --backup-existing`.
+The generator calls the IS and sensitivity
 implementations, so standalone 07/08 are not also run. All hand-offs therefore
 exist before the R consumers start. MC backups and generator backups are retained
 in timestamped directories; no silent overwrite is enabled by default in script 06.
@@ -169,10 +173,11 @@ the pipeline always supplies these rows. Do not use its fallback on an MC-only f
 
 ## Additional million-sample checks
 
-Each model/method was rerun in memory for IDs 183, 911 and 1198 with N=1,000,000,
+Each model/method was rerun for IDs 183, 911 and 1198 with N=1,000,000,
 chunk size 10,000, seed 42 and the existing stream conventions: MC uses
-`SeedSequence([42, conj_id, model_index])`; IS appends `7`. These checks do not
-replace the reproducible catalogue or its original sampling budgets.
+`SeedSequence([42, conj_id, model_index])`; IS appends `7`. MC results are now
+persisted in `mc_convergence.csv`; the separate million-sample IS checks remain
+in-memory diagnostics. Neither replaces the catalogue's original MC sampling budget.
 
 | ID | Gaussian MC posterior mean | MC 95% credible interval | Exact Gaussian |
 | --- | --- | --- | --- |
@@ -192,6 +197,46 @@ Gaussian IS confidence intervals. Gaussian IS estimates are 4.248841e-4,
 
 The larger IS budget reduces the Hoeffding widths by about a factor of ten
 relative to 10,000 draws; uncertainty from fitted parameters remains excluded.
+
+## Current 100,000-sample IS catalogue
+
+The catalogue was regenerated with the command at the top of this note, with
+backups of all existing generator outputs and refreshed plots/summaries. IS now
+uses 100,000 samples for every conjunction and both models. The existing
+100,000-sample `pc_mc.csv`, corrected `pc_exact.csv` and all input data are unchanged.
+
+Row counts: `pc_results.csv` 40,860; `pc_is.csv` and `is_log_diagnostics.csv`
+16,344 each; `mc_convergence.csv` 42; radius sensitivity 18. The convergence
+count is 3 IDs x 2 models x (3 IS checkpoints + 4 MC checkpoints). MC checkpoints
+are 1,000, 10,000, 100,000 and 1,000,000; IS checkpoints are 1,000, 10,000 and
+100,000. The million-sample MC rows follow the same seed-42 stream prefixes as
+the catalogue. Do not substitute another seed's point estimate in the report.
+
+| ID | Current Student-t IS (100,000) | Student-t MC checkpoint (1,000,000) |
+| --- | --- | --- |
+| 183 | 1.2202306253e-4 | 1.2849987150e-4 |
+| 911 | 1.0313835728e-5 | 1.1499988500e-5 |
+| 1198 | 9.3790554549e-5 | 9.3499906500e-5 |
+
+Each focused Student-t IS confidence interval overlaps its MC credible interval.
+At 183 the IS interval remains conservative, [0, 2.6613207967e-4]; an increased
+sample budget improves precision without guaranteeing a narrow interval on every
+event. There is still no exact Student-t reference probability.
+
+The 475 Gaussian float64-underflow flags remain explicit, with finite log
+probabilities; there are no Student-t underflows. With the larger sample budget,
+801 has `log_pc` approximately -745.100418 and ESS about 72,607, rather than the
+old 10,000-draw diagnostic values. The fixed 10,000-draw regression test retains
+its original -745.09249/7,270 reference, while the catalogue test replays the
+recorded sample budget. The IS runtime sum is now 307.387 seconds on this host;
+runtime is machine dependent, and these runs are not controlled timing experiments.
+
+The R plotting workflow was rerun using the updated IS rows and million-sample
+MC convergence rows. ROC still has one model-derived positive and AUC 1; this
+remains a highly limited model comparison, not proof of real-world accuracy.
+Pipeline tests resolve Bash with `shutil.which('bash')` and verify two runs with
+the current high-sample settings. Live Space-Track validation remains unavailable
+in this checkout, as described above.
 
 Intervals condition on fixed fitted parameters, ages and encounter geometry. They
 exclude parameter-fitting uncertainty, model misspecification, and numerical error.

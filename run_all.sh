@@ -18,7 +18,7 @@ echo "== Stage 3: conjunctions and probabilities (Navika, Parthvi) =="
 "$PYTHON" python/06_monte_carlo.py --backup-existing
 # Generates IS, radius sensitivity, integrated results and convergence before R.
 # Scripts 07/08 provide its estimators; running them separately duplicates work.
-"$PYTHON" python/generate_results.py --backup-existing
+"$PYTHON" python/generate_results.py --is-samples 100000 --checkpoints 1000 10000 100000 --backup-existing
 
 echo "== Stage 4: statistics and figures (Vishi, R) =="
 Rscript r/11_gaussian_vs_learned_tests.R
