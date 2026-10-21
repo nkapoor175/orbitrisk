@@ -22,3 +22,6 @@ data/raw/*
 Thumbs.db
 .vscode/
 .idea/
+
+# run_all.sh backups of regenerated results
+data/processed/backups/
