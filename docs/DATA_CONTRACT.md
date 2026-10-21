@@ -75,8 +75,8 @@ One row per conjunction, method and error model.
 | method | `exact`, `mc` or `is` |
 | error_model | `gaussian` or `student_t` |
 | pc | Collision probability estimate (posterior mean for Bayesian rows) |
-| ci_low | Lower end of the 95% credible interval |
-| ci_high | Upper end of the 95% credible interval |
+| ci_low | Lower end of the 95% Jeffreys credible interval for `mc`, or Hoeffding confidence interval for `is`; blank for `exact` |
+| ci_high | Upper end of the corresponding 95% interval; blank for `exact` |
 | n_samples | Number of Monte Carlo samples (blank for `exact`) |
 | runtime_s | Wall-clock seconds |
 
@@ -98,3 +98,19 @@ Latest TLE of every payload and debris object in the orbital shell.
 ## Other files
 
 `pc_radius_sensitivity.csv` (Parthvi): `conj_id, radius_m, error_model, pc`.
+
+`pc_mc.csv` and `pc_is.csv` use the same eight-column order as `pc_results.csv`.
+The integration generator supplies Hoeffding confidence endpoints in `pc_is.csv`;
+the standalone script 07 leaves endpoints blank when it does not calculate intervals.
+
+`mc_convergence.csv` (Parthvi): `conj_id, method, error_model, n_samples, pc, ci_low, ci_high`.
+One row per conjunction/method/model/cumulative sample checkpoint. Interval meanings
+are the same as above; exact quadrature has no sample-count convergence rows.
+
+See `docs/MONTE_CARLO_METHODOLOGY.md` for generation settings and limitations.
+
+`is_log_diagnostics.csv` (Parthvi): `conj_id, error_model, n_samples, log_pc, numerical_underflow, contribution_ess`.
+One row per IS event/model. `log_pc` is the natural logarithm of the internal
+estimate (Gaussian log-sum-exp, not a logarithm of rounded CSV data).
+`numerical_underflow` marks a positive estimate whose float64 conversion is zero.
+ESS describes concentration of weighted contributions, not binomial sample size.
