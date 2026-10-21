@@ -78,13 +78,13 @@ dat$age_bin <- cut(
 # par[3] = log(scale)
 student_nll <- function(par, z) {
   location <- par[1]
-  nu <-  exp(par[2])
+  nu <- exp(par[2])
   scale <- exp(par[3])
 
- if (!is.finite(nu) || nu <= 0 ||
-    !is.finite(scale) || scale <= 0) {
-  return(Inf)
-}
+  if (!is.finite(nu) || nu <= 0 ||
+      !is.finite(scale) || scale <= 0) {
+    return(Inf)
+  }
 
   value <- -sum(
     dt(
@@ -236,18 +236,48 @@ fit_direction <- function(column, direction) {
   aic_gaussian <- 2 * 2 - 2 * ll_gaussian
   aic_student <- 2 * 3 - 2 * ll_student
 
-  # Normal Q-Q diagnostic plot of standardized residuals.
+  # Q-Q diagnostic plots of standardized residuals.
   png(
     file.path(FIGURES, paste0("qq_", direction, ".png")),
     width = 1000,
     height = 800
   )
 
-  qqnorm(
-    z,
-    main = paste("Normal Q-Q Plot:", direction)
-  )
-  qqline(z, col = "red", lwd = 2)
+  if (direction == "along") {
+
+    # Show only the central 98% of Student-t theoretical quantiles.
+    z_plot <- z[is.finite(z)]
+    probs <- ppoints(length(z_plot))
+    keep <- probs >= 0.01 & probs <= 0.99
+
+    theoretical <- qt(probs[keep], df = nu)
+    observed <- sort(z_plot)[keep]
+
+    plot(
+      theoretical,
+      observed,
+      xlab = "Theoretical Student-t quantiles",
+      ylab = "Observed residual quantiles",
+      main = "Student-t Q-Q Plot: along",
+      pch = 16
+    )
+
+    abline(
+      lm(observed ~ theoretical),
+      col = "red",
+      lwd = 2
+    )
+
+  } else {
+
+    qqnorm(
+      z,
+      main = paste("Normal Q-Q Plot:", direction)
+    )
+
+    qqline(z, col = "red", lwd = 2)
+  }
+
   dev.off()
 
   # Empirical scale versus TLE age.

@@ -9,7 +9,8 @@ FIGURES   <- file.path(ROOT, "figures")
 dir.create(FIGURES, showWarnings = FALSE, recursive = TRUE)
 
 SEED <- 42
-ALERT_THRESHOLD <- 1e-4   # keep identical to python/common.py
+ALERT_THRESHOLD <- 1e-4 
+ROC_LABEL_THRESHOLD <- 1e-5  # keep identical to python/common.py
 
 not_implemented <- function(script, owner) {
   cat(sprintf("%s: not implemented yet (owner: %s)\n", script, owner))
