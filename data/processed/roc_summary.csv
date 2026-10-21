@@ -1,2 +1,2 @@
 "matched_conjunctions","alert_threshold","false_alarm_rate","missed_alert_rate","student_t_alerts","student_t_non_alerts","auc"
-8172,1e-04,0,0.973684210526316,38,8134,0.99510501727641
+8172,1e-05,0.000368822227686255,0.605263157894737,38,8134,0.99510501727641

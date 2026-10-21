@@ -244,7 +244,7 @@ if (!is.null(pc_results)) {
           roc_data$student_pc >= ROC_LABEL_THRESHOLD
 
         roc_data$predicted_alert <-
-          roc_data$gaussian_pc >= ALERT_THRESHOLD
+          roc_data$gaussian_pc >= ROC_LABEL_THRESHOLD
 
         positives <- sum(roc_data$actual_alert)
         negatives <- sum(!roc_data$actual_alert)
@@ -325,7 +325,7 @@ if (!is.null(pc_results)) {
 
         roc_summary <- data.frame(
           matched_conjunctions = nrow(roc_data),
-          alert_threshold = ALERT_THRESHOLD,
+          alert_threshold = ROC_LABEL_THRESHOLD,
           false_alarm_rate = false_alarm_rate,
           missed_alert_rate = missed_alert_rate,
           student_t_alerts = positives,

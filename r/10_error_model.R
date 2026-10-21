@@ -5,7 +5,6 @@
 # Reads: data/processed/residuals.csv
 # Writes: data/processed/error_model_fit.csv,
 #         data/processed/params.csv, figures/
-# Status: Initial implementation with Python-compatible parameter output.
 # Run from repository root: Rscript r/10_error_model.R
 
 source("r/common.R")
@@ -94,7 +93,9 @@ student_nll <- function(par, z) {
     ) - log(scale)
   )
 
-  if (!is.finite(value)) return(Inf)
+  if (!is.finite(value)) {
+    return(Inf)
+  }
 
   value
 }
@@ -236,47 +237,20 @@ fit_direction <- function(column, direction) {
   aic_gaussian <- 2 * 2 - 2 * ll_gaussian
   aic_student <- 2 * 3 - 2 * ll_student
 
-  # Q-Q diagnostic plots of standardized residuals.
+  # Normal Q-Q diagnostic plot of standardized residuals.
+  # Keep this as a normal Q-Q plot; the Student-t comparison
+  # diagnostic belongs in r/11_gaussian_vs_learned_tests.R.
   png(
     file.path(FIGURES, paste0("qq_", direction, ".png")),
     width = 1000,
     height = 800
   )
 
-  if (direction == "along") {
-
-    # Show only the central 98% of Student-t theoretical quantiles.
-    z_plot <- z[is.finite(z)]
-    probs <- ppoints(length(z_plot))
-    keep <- probs >= 0.01 & probs <= 0.99
-
-    theoretical <- qt(probs[keep], df = nu)
-    observed <- sort(z_plot)[keep]
-
-    plot(
-      theoretical,
-      observed,
-      xlab = "Theoretical Student-t quantiles",
-      ylab = "Observed residual quantiles",
-      main = "Student-t Q-Q Plot: along",
-      pch = 16
-    )
-
-    abline(
-      lm(observed ~ theoretical),
-      col = "red",
-      lwd = 2
-    )
-
-  } else {
-
-    qqnorm(
-      z,
-      main = paste("Normal Q-Q Plot:", direction)
-    )
-
-    qqline(z, col = "red", lwd = 2)
-  }
+  qqnorm(
+    z,
+    main = paste("Normal Q-Q Plot:", direction)
+  )
+  qqline(z, col = "red", lwd = 2)
 
   dev.off()
 
