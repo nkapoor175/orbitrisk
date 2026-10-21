@@ -241,10 +241,10 @@ if (!is.null(pc_results)) {
         warning("ROC analysis skipped: no matching valid probabilities.")
       } else {
         roc_data$actual_alert <-
-          roc_data$student_pc >= ALERT_THRESHOLD
+          roc_data$student_pc >= ROC_LABEL_THRESHOLD
 
         roc_data$predicted_alert <-
-          roc_data$gaussian_pc >= ALERT_THRESHOLD
+          roc_data$gaussian_pc >= ROC_LABEL_THRESHOLD
 
         positives <- sum(roc_data$actual_alert)
         negatives <- sum(!roc_data$actual_alert)
@@ -325,7 +325,7 @@ if (!is.null(pc_results)) {
 
         roc_summary <- data.frame(
           matched_conjunctions = nrow(roc_data),
-          alert_threshold = ALERT_THRESHOLD,
+          alert_threshold = ROC_LABEL_THRESHOLD,
           false_alarm_rate = false_alarm_rate,
           missed_alert_rate = missed_alert_rate,
           student_t_alerts = positives,
@@ -381,10 +381,12 @@ if (!is.null(pc_results)) {
 # Uses named columns n_samples and pc
 # ------------------------------------------------------------
 
+
 convergence_file <- file.path(PROCESSED, "mc_convergence.csv")
 convergence <- read_csv_if_exists(convergence_file)
 
 if (!is.null(convergence)) {
+
   required <- c("n_samples", "pc")
 
   if (!all(required %in% names(convergence))) {
@@ -392,11 +394,15 @@ if (!is.null(convergence)) {
       "Convergence plot skipped: mc_convergence.csv must contain ",
       "n_samples and pc."
     )
+
   } else {
+
     convergence$n_samples <- suppressWarnings(
       as.numeric(convergence$n_samples)
     )
-    convergence$pc <- suppressWarnings(as.numeric(convergence$pc))
+    convergence$pc <- suppressWarnings(
+      as.numeric(convergence$pc)
+    )
 
     valid <- is.finite(convergence$n_samples) &
       convergence$n_samples > 0 &
@@ -405,7 +411,6 @@ if (!is.null(convergence)) {
 
     plot_data <- convergence[valid, , drop = FALSE]
 
-    # Plot each available method/model separately.
     group_columns <- intersect(
       c("method", "error_model", "conj_id"),
       names(plot_data)
@@ -413,87 +418,135 @@ if (!is.null(convergence)) {
 
     if (nrow(plot_data) < 2) {
       warning("Convergence plot skipped: insufficient valid data.")
-    } else {
-      if (length(group_columns) == 0) {
-        plot_data$plot_group <- "all"
-      } else {
-        plot_data$plot_group <- do.call(
-          interaction,
-          c(plot_data[group_columns], list(drop = TRUE, sep = " / "))
-        )
-      }
 
-      groups <- unique(plot_data$plot_group)
+    } else if (!all(
+      c("conj_id", "method", "error_model") %in% names(plot_data)
+    )) {
+      warning(
+        "Convergence plot skipped: conj_id, method, and error_model ",
+        "columns are required for the three-panel plot."
+      )
+
+    } else {
+
+      plot_data$method <- tolower(trimws(plot_data$method))
+      plot_data$error_model <- tolower(trimws(plot_data$error_model))
+      plot_data$conj_id <- as.character(plot_data$conj_id)
+
+      plot_data$curve <- paste(
+        toupper(plot_data$method),
+        ifelse(
+          plot_data$error_model == "student_t",
+          "Student-t",
+          "Gaussian"
+        ),
+        sep = " - "
+      )
+
+      curve_order <- c(
+        "MC - Gaussian",
+        "MC - Student-t",
+        "IS - Gaussian",
+        "IS - Student-t"
+      )
+
+      curve_col <- c(
+        "steelblue",
+        "firebrick",
+        "darkgreen",
+        "purple"
+      )
+      curve_pch <- c(16, 17, 15, 18)
+
+      conjunctions <- unique(plot_data$conj_id)
 
       png(
-        file.path(FIGURES, "mc_convergence.png"),
-        width = 1000,
-        height = 700
+        filename = file.path(FIGURES, "mc_convergence.png"),
+        width = 1500,
+        height = 600
       )
 
-      plot(
-        NA,
-        xlim = range(plot_data$n_samples),
-        ylim = range(plot_data$pc),
-        xlab = "Number of Monte Carlo samples",
-        ylab = "Collision probability (Pc)",
-        main = "Monte Carlo convergence",
-        log = if (all(plot_data$pc > 0)) "xy" else ""
-      )
+      old_par <- par(mfrow = c(1, length(conjunctions)))
 
-      for (group in groups) {
-        group_data <- plot_data[
-          plot_data$plot_group == group,
-          ,
-          drop = FALSE
-        ]
-        group_data <- group_data[
-          order(group_data$n_samples),
+      for (cid in conjunctions) {
+
+        panel_data <- plot_data[
+          plot_data$conj_id == cid,
           ,
           drop = FALSE
         ]
 
-        if (nrow(group_data) > 0) {
-          lines(
-            group_data$n_samples,
-            group_data$pc,
-            type = "b",
-            pch = 16
-          )
+        panel_data <- panel_data[
+          is.finite(panel_data$n_samples) &
+            panel_data$n_samples > 0 &
+            is.finite(panel_data$pc) &
+            panel_data$pc >= 0,
+          ,
+          drop = FALSE
+        ]
+
+        if (nrow(panel_data) == 0) {
+          plot.new()
+          title(main = paste("Conjunction", cid, "- no valid data"))
+          next
         }
-      }
 
-      if (length(groups) <= 10) {
+        use_log <- all(panel_data$pc > 0)
+
+        plot(
+          NA,
+          xlim = range(panel_data$n_samples),
+          ylim = range(panel_data$pc),
+          xlab = "Number of samples",
+          ylab = "Collision probability (Pc)",
+          main = paste("Conjunction", cid),
+          log = if (use_log) "xy" else ""
+        )
+
+        for (j in seq_along(curve_order)) {
+
+          curve_name <- curve_order[j]
+
+          curve_data <- panel_data[
+            panel_data$curve == curve_name,
+            ,
+            drop = FALSE
+          ]
+
+          if (nrow(curve_data) > 0) {
+
+            curve_data <- curve_data[
+              order(curve_data$n_samples),
+              ,
+              drop = FALSE
+            ]
+
+            lines(
+              curve_data$n_samples,
+              curve_data$pc,
+              type = "b",
+              pch = curve_pch[j],
+              col = curve_col[j]
+            )
+          }
+        }
+
         legend(
           "topright",
-          legend = groups,
+          legend = curve_order,
+          col = curve_col,
+          pch = curve_pch,
           lty = 1,
-          pch = 16,
-          cex = 0.7,
+          cex = 0.65,
           bty = "n"
         )
       }
 
+      par(old_par)
       dev.off()
+
       cat("Convergence plot saved to figures/mc_convergence.png\n")
     }
   }
 }
 
-# ------------------------------------------------------------
-# 4. Fleet risk diagnostics
-# ------------------------------------------------------------
-
-fleet_file <- file.path(
-  PROCESSED,
-  "fleet_risk",
-  "fleet_risk_summary.csv"
-)
-fleet <- read_csv_if_exists(fleet_file)
-
-if (!is.null(fleet) && nrow(fleet) > 0) {
-  print(fleet)
-  cat("\nFleet risk summary loaded from:", fleet_file, "\n")
-}
-
-cat("\nr/14_plots.R completed.\n")

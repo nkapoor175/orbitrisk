@@ -5,7 +5,6 @@
 # Reads: data/processed/residuals.csv
 # Writes: data/processed/error_model_fit.csv,
 #         data/processed/params.csv, figures/
-# Status: Initial implementation with Python-compatible parameter output.
 # Run from repository root: Rscript r/10_error_model.R
 
 source("r/common.R")
@@ -78,13 +77,13 @@ dat$age_bin <- cut(
 # par[3] = log(scale)
 student_nll <- function(par, z) {
   location <- par[1]
-  nu <-  exp(par[2])
+  nu <- exp(par[2])
   scale <- exp(par[3])
 
- if (!is.finite(nu) || nu <= 0 ||
-    !is.finite(scale) || scale <= 0) {
-  return(Inf)
-}
+  if (!is.finite(nu) || nu <= 0 ||
+      !is.finite(scale) || scale <= 0) {
+    return(Inf)
+  }
 
   value <- -sum(
     dt(
@@ -94,7 +93,9 @@ student_nll <- function(par, z) {
     ) - log(scale)
   )
 
-  if (!is.finite(value)) return(Inf)
+  if (!is.finite(value)) {
+    return(Inf)
+  }
 
   value
 }
@@ -237,6 +238,8 @@ fit_direction <- function(column, direction) {
   aic_student <- 2 * 3 - 2 * ll_student
 
   # Normal Q-Q diagnostic plot of standardized residuals.
+  # Keep this as a normal Q-Q plot; the Student-t comparison
+  # diagnostic belongs in r/11_gaussian_vs_learned_tests.R.
   png(
     file.path(FIGURES, paste0("qq_", direction, ".png")),
     width = 1000,
@@ -248,6 +251,7 @@ fit_direction <- function(column, direction) {
     main = paste("Normal Q-Q Plot:", direction)
   )
   qqline(z, col = "red", lwd = 2)
+
   dev.off()
 
   # Empirical scale versus TLE age.
