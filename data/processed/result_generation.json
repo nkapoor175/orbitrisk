@@ -1,0 +1,150 @@
+{
+  "seed": 42,
+  "is_samples": 10000,
+  "radius_samples": 100000,
+  "chunk_size": 1000,
+  "focus_ids": [
+    183,
+    911,
+    1198
+  ],
+  "checkpoints": [
+    1000,
+    2000,
+    5000,
+    10000
+  ],
+  "radii_m": [
+    1.0,
+    2.5,
+    5.0
+  ],
+  "input_sha256": {
+    "params.csv": "4f15c35af30d46fa69232e694ab1b58a161784489df1b21b07ab5d4cf885cbc1",
+    "conjunctions.csv": "6e3a890b01db65c072b11049611b9d234a792ed2e3fe2867f5b72d95d7a893d8",
+    "pc_exact.csv": "925ff36dabd86c99eb047e6a7b20edd435d7ec1a7136d188213710745e0a57ae",
+    "pc_mc.csv": "7d25c50982e08e96cc25f4b83639fa28567e017fefe35c5e570f41dfe44c53ea"
+  },
+  "numpy_version": "2.5.4",
+  "mc_source": "Existing pc_mc.csv; seed replay verified on focused IDs only; original runtime preserved",
+  "script_sha256": {
+    "test_bayes_and_sensitivity.py": "3397c0d2cec51b23a7edc1c1ca0bc9a54d74f8d454294fd78b9f8e2062b86898",
+    "06_monte_carlo.py": "ca8cb59713db2b1546a290203eb7887fb89512c49d71b88e4d3833d5b34e616f",
+    "01_download.py": "8571cccbaed496633399ca911a389451555c7722e11fd1fa2b6ae24065e8b64b",
+    "04_screen_conjunctions.py": "e847414de165dfddff537fe76e4e01ad790cc4b8609637d93f0cea22b9768290",
+    "test_monte_carlo.py": "e625fa0bb5344a2575504e55c1b8771c0cac48669d798cb026c609cd07d58712",
+    "02_clean.py": "1668f29871c8a21f954d66e04f2b23b0690ba136a9cb59cfe3bcaf2a769a479b",
+    "05_exact_pc.py": "57a1752557e3f9af69b5070cce39abf597bf60fbcb405d145031d2fde15a9ab8",
+    "generate_results.py": "8fa4da15e35d1e2dea569741689571fa8fdaf52fece069eb88d874c385c4bd2e",
+    "test_gaussian_log_weights.py": "cfbeff7e973b759f59d17a0d5d6bba7a7d639837b40e5609cd666bba10c84ece",
+    "make_synthetic_tles.py": "00c253c9139efd308c24bcf2ecbb87a4a22a7c41bf69d681316e44c1c69961b0",
+    "03_residuals.py": "3a9f79ed2cf0e56e4451eaebeb24b5858fa8c33417052ca139be329dfdb8eff2",
+    "common.py": "03db8a3c8e5706c71d38d6147c029b11512186a7e701c91016bbec7538b12de4",
+    "test_importance_sampling.py": "3067b5547ea219263e13e6ddc1dafc0128aa2e40ffb0e6834a3ae6373089e0d8",
+    "07_importance_sampling.py": "e9d489f4f70981c060b2b54019290aec30103e21d1730ce12e0eca0dc8cdc213",
+    "test_result_generation.py": "12225ec8928616ac17f44b983d9f7c435f9b7a6161ff586bd4526e99f5575ef4",
+    "test_exact_pc.py": "e536401a011b386feb68271d3e1acb7b2eecab89e288345c3ddf27d46ad74df0",
+    "make_placeholder_params.py": "d47ab576f0268315248e87f282a5560ed5327a7d8e8d7e65f9c22e0cb1e50601",
+    "08_bayes_and_sensitivity.py": "e8ddd998c463b1365f09b60dfb6f873fc66ee41772edf80475f017978020f38b",
+    "orbit_utils.py": "3d4dd87d86205017c5dd4938280f0acfe4faaea0299f29b3902c1237b7e2355d"
+  },
+  "focused_is_diagnostics": [
+    {
+      "conj_id": 183,
+      "model": "gaussian",
+      "bound": 0.0005728349726530182,
+      "n_samples": 10000,
+      "pc": 0.00042489681110870176,
+      "log_pc": -7.763664215911206,
+      "numerical_underflow": false,
+      "zero_contributions": false,
+      "contribution_variance": 5.420649201112587e-12,
+      "estimator_variance": 5.420649201112583e-16,
+      "standard_error": 2.3282287690672887e-08,
+      "log_contribution_variance": -25.94080552884684,
+      "contribution_ess": 9999.699788109418,
+      "max_contribution": 0.0004295378419684283,
+      "runtime_s": 0.0013139578513801098
+    },
+    {
+      "conj_id": 183,
+      "model": "student_t",
+      "bound": 0.033555118631131475,
+      "n_samples": 10000,
+      "pc": 0.00010042046772888061,
+      "contribution_variance": 1.5587720777175843e-06,
+      "estimator_variance": 1.5587720777175843e-10,
+      "standard_error": 1.2485079405905211e-05,
+      "contribution_ess": 64.28423096877987,
+      "max_contribution": 0.03289924416540015,
+      "runtime_s": 0.0030223329085856676
+    },
+    {
+      "conj_id": 911,
+      "model": "gaussian",
+      "bound": 0.00012783780404040712,
+      "n_samples": 10000,
+      "pc": 4.372344310376074e-05,
+      "log_pc": -10.037626144239889,
+      "numerical_underflow": false,
+      "zero_contributions": false,
+      "contribution_variance": 4.4921872890849236e-13,
+      "estimator_variance": 4.4921872890849037e-17,
+      "standard_error": 6.70237815188378e-09,
+      "log_contribution_variance": -28.431266478996392,
+      "contribution_ess": 9997.650996375909,
+      "max_contribution": 4.507490463611542e-05,
+      "runtime_s": 0.001324250129982829
+    },
+    {
+      "conj_id": 911,
+      "model": "student_t",
+      "bound": 0.001210720683462482,
+      "n_samples": 10000,
+      "pc": 1.0112169716968466e-05,
+      "contribution_variance": 3.3898347740432597e-09,
+      "estimator_variance": 3.38983477404326e-13,
+      "standard_error": 5.822228760572071e-07,
+      "contribution_ess": 292.85007414509005,
+      "max_contribution": 0.0010906915081784355,
+      "runtime_s": 0.0031957088503986597
+    },
+    {
+      "conj_id": 1198,
+      "model": "gaussian",
+      "bound": 9.545598233845998e-05,
+      "n_samples": 10000,
+      "pc": 4.4959340182457115e-05,
+      "log_pc": -10.00975202814362,
+      "numerical_underflow": false,
+      "zero_contributions": false,
+      "contribution_variance": 5.921675668666728e-13,
+      "estimator_variance": 5.921675668666744e-17,
+      "standard_error": 7.695242470947061e-09,
+      "log_contribution_variance": -28.15498674793873,
+      "contribution_ess": 9997.071574841619,
+      "max_contribution": 4.64901290653885e-05,
+      "runtime_s": 0.0013431659899652004
+    },
+    {
+      "conj_id": 1198,
+      "model": "student_t",
+      "bound": 0.0011690987160158188,
+      "n_samples": 10000,
+      "pc": 9.324802763039541e-05,
+      "contribution_variance": 2.7837072877850546e-08,
+      "estimator_variance": 2.7837072877850547e-12,
+      "standard_error": 1.6684445713852933e-06,
+      "contribution_ess": 2380.3223440041934,
+      "max_contribution": 0.0011635163386484947,
+      "runtime_s": 0.0030741251539438963
+    }
+  ],
+  "rows": {
+    "pc_is.csv": 16344,
+    "pc_results.csv": 40860,
+    "is_log_diagnostics.csv": 16344,
+    "pc_radius_sensitivity.csv": 18,
+    "mc_convergence.csv": 54
+  }
+}

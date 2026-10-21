@@ -1,0 +1,9 @@
+"metric","value"
+"matched_valid_conjunctions",8172
+"high_risk_conjunctions",1
+"alert_threshold",1e-04
+"sum_collision_probabilities",0.00218020333291468
+"probability_at_least_one_fleet_collision",0.00217782841587577
+"observed_time_window_days",6.95971276620472
+"observed_high_risk_rate_per_day",0.143684090650385
+"expected_collision_count_from_probability_sum",0.00218020333291468
