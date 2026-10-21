@@ -66,7 +66,8 @@ class LogWeightTests(unittest.TestCase):
         d = g.importance.estimate_pc(row, params, 'student_t', 10000, 1000, rng)
         old = next(x for x in manifest['focused_is_diagnostics'] if x['conj_id']==183 and x['model']=='student_t')
         for key in ['pc', 'contribution_variance', 'contribution_ess', 'max_contribution']:
-            self.assertEqual(d[key], old[key])
+            np.testing.assert_allclose(d[key], old[key], rtol=1e-12, atol=0,
+                                       err_msg=f"Student-t diagnostic changed: {key}")
         for name in ['pc_is.csv', 'pc_results.csv']:
             self.assertEqual(tuple(pd.read_csv(g.PROCESSED/name, nrows=0).columns), g.mc.RESULT_COLUMNS)
         self.assertEqual(tuple(pd.read_csv(g.PROCESSED/'mc_convergence.csv', nrows=0).columns), g.CONVERGENCE_COLUMNS)

@@ -1,6 +1,7 @@
 """Generate contracted hand-offs without changing estimators or input results.
 
-Run from root with .venv/bin/python -B python/generate_results.py --help.
+Run from root with python -B python/generate_results.py --help, using the
+activated virtual environment (Windows: .venv/Scripts/Activate.ps1).
 Existing outputs require --backup-existing; timestamped backups are preserved.
 """
 import argparse

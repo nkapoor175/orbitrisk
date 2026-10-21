@@ -3,7 +3,7 @@
 Run from the repository root:
 
 ```sh
-.venv/bin/python -B python/generate_results.py --is-samples 10000 --chunk-size 1000 --seed 42 --focus-ids 183 911 1198 --checkpoints 1000 2000 5000 10000 --radii-m 1 2.5 5 --radius-samples 100000 --backup-existing
+python -B python/generate_results.py --is-samples 10000 --chunk-size 1000 --seed 42 --focus-ids 183 911 1198 --checkpoints 1000 2000 5000 10000 --radii-m 1 2.5 5 --radius-samples 100000 --backup-existing
 ```
 
 The generator preserves existing `pc_mc.csv` and corrected `pc_exact.csv`, reads
@@ -13,7 +13,7 @@ There are no exact Student-t rows. Existing MC has 100,000 draws per event/model
 Its original runtimes are retained. To independently reproduce MC estimates:
 
 ```sh
-.venv/bin/python -B python/06_monte_carlo.py --n-samples 100000 --chunk-size 1000 --seed 42 --output /private/tmp/orbitrisk_mc_replay.csv
+python -B python/06_monte_carlo.py --n-samples 100000 --chunk-size 1000 --seed 42 --output data/processed/pc_mc_replay.csv
 ```
 
 All output paths must be unused. For repeat generation, pass a fresh
@@ -136,6 +136,62 @@ to identify individual traces.
 
 Before rerunning R, preserve any existing plots and summary outputs that it will
 replace. The generator's backup flag protects its own six outputs, not R outputs.
+
+## Repeatable pipeline and portability
+
+Activate the project's virtual environment, then run `bash run_all.sh`. The shell
+runner uses `python` from the active environment; `PYTHON` can select a specific
+interpreter. On Windows activate `.venv/Scripts/Activate.ps1` in PowerShell or
+`source .venv/Scripts/activate` in Git Bash; the Bash runner still requires Bash
+and Rscript on PATH. No POSIX-only interpreter path is hard-coded in the generator.
+
+Stage 3 runs exact Gaussian quadrature, script 06 with `--backup-existing`, then
+`generate_results.py --backup-existing`. The generator calls the IS and sensitivity
+implementations, so standalone 07/08 are not also run. All hand-offs therefore
+exist before the R consumers start. MC backups and generator backups are retained
+in timestamped directories; no silent overwrite is enabled by default in script 06.
+The upstream data stages retain their existing refresh/cache behavior.
+
+`python -B python/test_pipeline.py` runs the complete shell orchestration twice in
+an isolated workspace using actual exact/MC/IS/integration calculations on three
+real conjunctions. It asserts order, hand-offs, deterministic values and byte-for-
+byte backups. Unavailable data preparation and R stages are explicitly stubbed;
+it does not claim to validate Space-Track access or R statistics. A live invocation
+in this checkout stops at stage 1 because no Space-Track login or raw TLE archive
+is available. Two live download-to-plots runs remain to be verified on a configured
+team machine. No current input datasets or catalogue outputs were changed by these tests.
+
+Never sum the MC posterior-mean Pc column for fleet risk. At N=100,000, each
+zero-hit row contributes about 5e-6 from the prior, producing a misleading fleet
+sum across thousands of events. Fleet analyses use exact Gaussian or unbiased IS
+estimates. The existing R fleet workflow selects exact Gaussian when available;
+the pipeline always supplies these rows. Do not use its fallback on an MC-only file.
+
+## Additional million-sample checks
+
+Each model/method was rerun in memory for IDs 183, 911 and 1198 with N=1,000,000,
+chunk size 10,000, seed 42 and the existing stream conventions: MC uses
+`SeedSequence([42, conj_id, model_index])`; IS appends `7`. These checks do not
+replace the reproducible catalogue or its original sampling budgets.
+
+| ID | Gaussian MC posterior mean | MC 95% credible interval | Exact Gaussian |
+| --- | --- | --- | --- |
+| 183 | 4.094996e-4 | [3.708004e-4, 4.500912e-4] | 4.248835e-4 |
+| 911 | 5.749994e-5 | [4.360668e-5, 7.328491e-5] | 4.372667e-5 |
+| 1198 | 5.049995e-5 | [3.754196e-5, 6.534934e-5] | 4.495986e-5 |
+
+All three exact values lie in these MC intervals and in the million-sample
+Gaussian IS confidence intervals. Gaussian IS estimates are 4.248841e-4,
+4.372588e-5 and 4.495964e-5, respectively.
+
+| ID | Student-t IS estimate | IS 95% Hoeffding confidence interval |
+| --- | --- | --- |
+| 183 | 1.278490e-4 | [8.227726e-5, 1.734207e-4] |
+| 911 | 1.022119e-5 | [8.576890e-6, 1.186549e-5] |
+| 1198 | 9.404635e-5 | [9.245858e-5, 9.563412e-5] |
+
+The larger IS budget reduces the Hoeffding widths by about a factor of ten
+relative to 10,000 draws; uncertainty from fitted parameters remains excluded.
 
 Intervals condition on fixed fitted parameters, ages and encounter geometry. They
 exclude parameter-fitting uncertainty, model misspecification, and numerical error.

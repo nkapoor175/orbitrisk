@@ -6,12 +6,14 @@ Reads   : data/processed/conjunctions.csv, data/processed/params.csv
 Writes  : data/processed/pc_mc.csv
 Pc is the Jeffreys posterior mean; intervals are equal-tailed 95% Beta
 credible intervals. Output uses the existing pc_results.csv column contract.
-Existing output files are never overwritten. Runtime includes geometry and
+Existing outputs require --backup-existing for backed-up replacement. Runtime includes geometry and
 simulation for each row. Student-t scales are not standard deviations.
 Run from the repo root:  python python/06_monte_carlo.py
 """
 import argparse
 import time
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -122,11 +124,17 @@ def main():
     parser.add_argument("--model", choices=("both",) + MODELS, default="both")
     parser.add_argument("--limit", type=int, help="First N conjunctions for a quick run")
     parser.add_argument("--output", type=Path, default=PROCESSED / "pc_mc.csv")
+    parser.add_argument("--backup-existing", action="store_true",
+                        help="back up an existing output before replacing it")
     args = parser.parse_args()
     if args.n_samples <= 0 or args.chunk_size <= 0 or args.seed < 0 or (args.limit is not None and args.limit <= 0):
         parser.error("Sample/chunk/limit counts must be positive; seed must be nonnegative")
-    if args.output.exists():
+    if args.output.exists() and not args.backup_existing:
         parser.error(f"Output already exists: {args.output}; choose a new --output path")
+    if args.output.resolve() in [(PROCESSED / name).resolve() for name in
+                                 ("params.csv", "conjunctions.csv", "pc_exact.csv", "pc_is.csv",
+                                  "pc_results.csv", "mc_convergence.csv")]:
+        parser.error("Output path is reserved for another pipeline input/result")
     models = load_parameters()
     conjunctions = pd.read_csv(PROCESSED / "conjunctions.csv")
     if conjunctions.empty or conjunctions.conj_id.duplicated().any():
@@ -150,6 +158,11 @@ def main():
         if len(results) % (100 * len(selected)) == 0:
             print(f"Simulated {len(results) // len(selected)} conjunctions", flush=True)
     # Exclusive creation also protects against an output appearing during simulation.
+    if args.output.exists() and args.backup_existing:
+        backup = args.output.parent / "backups" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        backup.mkdir(parents=True)
+        shutil.copy2(args.output, backup / args.output.name)
+        args.output.unlink()
     with args.output.open("x") as output:
         pd.DataFrame(results, columns=RESULT_COLUMNS).to_csv(output, index=False, float_format="%.10e")
     print(f"Wrote {len(results)} rows to {args.output}")
