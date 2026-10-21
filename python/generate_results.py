@@ -117,6 +117,8 @@ def main():
     parser.add_argument('--seed', type=int, default=RANDOM_SEED)
     parser.add_argument('--focus-ids', type=int, nargs='+', default=[183, 911, 1198])
     parser.add_argument('--checkpoints', type=int, nargs='+', default=[1000, 2000, 5000, 10000])
+    parser.add_argument('--mc-checkpoints', type=int, nargs='+', default=[1_000_000],
+                        help='additional focused MC checkpoints, independent of the IS budget')
     parser.add_argument('--radii-m', type=float, nargs='+', default=[1., 2.5, 5.])
     parser.add_argument('--radius-samples', type=int, default=100_000)
     parser.add_argument('--output-dir', type=Path, default=PROCESSED)
@@ -124,6 +126,8 @@ def main():
     args = parser.parse_args()
     if args.is_samples < 2 or args.radius_samples < 2 or args.chunk_size <= 0 or args.seed < 0:
         parser.error('Invalid sample/chunk count or seed')
+    if min(args.mc_checkpoints) < 2:
+        parser.error('MC checkpoints require at least two samples')
     checkpoints = sorted(set(args.checkpoints + [args.is_samples]))
     if min(checkpoints) < 2 or max(checkpoints) > args.is_samples or any(n % args.chunk_size for n in checkpoints if n != args.is_samples):
         parser.error('Checkpoints must align with chunks and not exceed IS samples')
@@ -173,7 +177,7 @@ def main():
                 diagnostics_records.append(dict(conj_id=cid, model=model, bound=bound, **diagnostic))
                 original = saved_mc[(saved_mc.conj_id == cid) & (saved_mc.error_model == model)].iloc[0]
                 final_n = int(original.n_samples)
-                for n in sorted(set(checkpoints + [final_n])):
+                for n in sorted(set(checkpoints + [final_n] + args.mc_checkpoints)):
                     rng_mc = np.random.default_rng(np.random.SeedSequence([args.seed, cid, model_index]))
                     h = mc.count_collisions(row, parameters[model], model, n, args.chunk_size, rng_mc)
                     mean, lo, hi = mc.jeffreys_summary(h, n)
@@ -197,6 +201,7 @@ def main():
         raise RuntimeError('Inputs changed during generation')
     metadata = dict(seed=args.seed, is_samples=args.is_samples, radius_samples=args.radius_samples,
                     chunk_size=args.chunk_size, focus_ids=args.focus_ids, checkpoints=checkpoints,
+                    mc_checkpoints=args.mc_checkpoints,
                     radii_m=args.radii_m, input_sha256=hashes, numpy_version=np.__version__,
                     mc_source='Existing pc_mc.csv; seed replay verified on focused IDs only; original runtime preserved',
                     script_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(__file__).parent.glob('*.py')},

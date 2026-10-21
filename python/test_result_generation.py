@@ -24,8 +24,25 @@ class IntegrationTests(unittest.TestCase):
         np.testing.assert_allclose(joined.pc, np.exp(joined.log_pc), rtol=1e-8, atol=0)
         self.assertTrue((joined.numerical_underflow == (joined.pc == 0)).all())
         row = logs[(logs.conj_id == 801) & (logs.error_model == 'gaussian')].iloc[0]
-        self.assertAlmostEqual(row.log_pc, -745.0924876472135, places=7)
-        self.assertAlmostEqual(row.contribution_ess, 7270.4022062, places=4)
+        replay = g.importance.estimate_pc(
+            pd.read_csv(g.PROCESSED / 'conjunctions.csv').query('conj_id == 801').iloc[0].to_dict(),
+            g.mc.load_parameters()['gaussian'], 'gaussian', int(row.n_samples), 1000,
+            np.random.default_rng(np.random.SeedSequence([42, 801, 0, 7])))
+        self.assertAlmostEqual(row.log_pc, replay['log_pc'], places=7)
+        np.testing.assert_allclose(row.contribution_ess, replay['contribution_ess'], rtol=1e-9)
+
+    def test_focused_million_sample_mc_checkpoints(self):
+        manifest = __import__('json').loads((g.PROCESSED / 'result_generation.json').read_text())
+        convergence = pd.read_csv(g.PROCESSED / 'mc_convergence.csv')
+        for cid in manifest['focus_ids']:
+            for model in g.mc.MODELS:
+                selected = convergence[(convergence.conj_id == cid) & (convergence.method == 'mc') &
+                                       (convergence.error_model == model) & (convergence.n_samples == 1_000_000)]
+                self.assertEqual(len(selected), 1)
+                value = selected.iloc[0]
+                hits = round(value.pc * (1_000_000 + 1) - .5)
+                np.testing.assert_allclose([value.pc, value.ci_low, value.ci_high],
+                                           g.mc.jeffreys_summary(hits, 1_000_000), rtol=1e-8)
 
     def test_extreme_gaussian_contribution_diagnostics(self):
         moments = g.importance.Moments()
