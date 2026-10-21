@@ -459,7 +459,7 @@ if (!is.null(convergence)) {
                 group_data$pc,
                 type = "b",
                 pch = 16,
-                col = i
+                col = match(group, groups)
               )
         }
       }
