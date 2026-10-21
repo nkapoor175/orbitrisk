@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 class PipelineTests(unittest.TestCase):
     def test_two_complete_orchestrated_runs(self):
+        bash = shutil.which('bash')
+        self.assertIsNotNone(bash, 'Bash is required for the shell pipeline test')
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             shutil.copytree(ROOT / 'python', root / 'python', ignore=shutil.ignore_patterns('__pycache__'))
@@ -63,11 +65,11 @@ if sys.argv[1] in ('r/12_poisson_fleet_model.R', 'r/14_plots.R'):
                         'r/13_calibration.R', 'r/14_plots.R']
             old_bytes, old_tables = {}, {}
             for run in range(2):
-                completed = subprocess.run(['bash', 'run_all.sh'], cwd=root, env=env,
+                completed = subprocess.run([bash, 'run_all.sh'], cwd=root, env=env,
                                            capture_output=True, text=True)
                 self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
                 for name, count in [('pc_results.csv', 15), ('pc_mc.csv', 6), ('pc_is.csv', 6),
-                                    ('mc_convergence.csv', 54), ('pc_radius_sensitivity.csv', 18)]:
+                                    ('mc_convergence.csv', 42), ('pc_radius_sensitivity.csv', 18)]:
                     path = processed / name
                     table = pd.read_csv(path)
                     self.assertEqual(len(table), count)

@@ -63,7 +63,7 @@ class LogWeightTests(unittest.TestCase):
         params = g.mc.load_parameters()['student_t']
         row = pd.read_csv(g.PROCESSED / 'conjunctions.csv').query('conj_id == 183').iloc[0].to_dict()
         rng = np.random.default_rng(np.random.SeedSequence([42, 183, 1, 7]))
-        d = g.importance.estimate_pc(row, params, 'student_t', 10000, 1000, rng)
+        d = g.importance.estimate_pc(row, params, 'student_t', manifest['is_samples'], manifest['chunk_size'], rng)
         old = next(x for x in manifest['focused_is_diagnostics'] if x['conj_id']==183 and x['model']=='student_t')
         for key in ['pc', 'contribution_variance', 'contribution_ess', 'max_contribution']:
             np.testing.assert_allclose(d[key], old[key], rtol=1e-12, atol=0,
