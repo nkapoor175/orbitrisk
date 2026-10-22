@@ -5,6 +5,7 @@
 # Reads: data/processed/residuals.csv
 # Writes: data/processed/error_model_fit.csv,
 #         data/processed/params.csv, figures/
+# Status: DONE
 # Run from repository root: Rscript r/10_error_model.R
 
 source("r/common.R")

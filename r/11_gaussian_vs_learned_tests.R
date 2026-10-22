@@ -217,21 +217,21 @@ compare_direction <- function(direction, column) {
   )
   abline(a = gm, b = gs, col = "red", lwd = 2)
 
- # Student-t Q-Q plot: use the central 98% to avoid
-# extreme theoretical quantiles dominating the plot.
-probs <- ppoints(length(z))
-keep <- probs >= 0.01 & probs <= 0.99
-observed <- sort(z)[keep]
+  # Student-t Q-Q plot: use the central 98% to avoid
+  # extreme theoretical quantiles dominating the plot.
+  probs <- ppoints(length(z))
+  keep <- probs >= 0.01 & probs <= 0.99
+  observed <- sort(z)[keep]
 
-plot(
-  tl + ts * qt(probs[keep], df = nu),
-  observed,
-  pch = 16,
-  cex = 0.35,
-  xlab = "Student-t theoretical quantiles",
-  ylab = "Observed standardized residuals",
-  main = paste(direction, "- Student-t Q-Q")
-)
+  plot(
+    tl + ts * qt(probs[keep], df = nu),
+    observed,
+    pch = 16,
+    cex = 0.35,
+    xlab = "Student-t theoretical quantiles",
+    ylab = "Observed standardized residuals",
+    main = paste(direction, "- Student-t Q-Q")
+  )
 
   q_obs <- quantile(z, c(0.25, 0.75), names = FALSE)
   q_theory <- tl + ts * qt(c(0.25, 0.75), df = nu)
