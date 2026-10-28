@@ -23,7 +23,7 @@ for r in list(a.runs):
 lines = ["Navika Kapoor (25BCE0835), Parthvi Mishra (25BCE0827), Vishi Joshi (25BBS0082)",
          "SCOPE, Vellore Institute of Technology, Vellore, India",
          "navika.kapoor2025@vitstudent.ac.in, parthvi.mishra2025@vitstudent.ac.in, "
-         "vishu.joshi2025@vitstudent.ac.in"]
+         "vishi.joshi2025@vitstudent.ac.in"]
 for i, line in enumerate(lines):
     for part in re.split(r"(\[[^\]]*\])", line):
         if part:
@@ -44,8 +44,8 @@ ab.add_run(
     "collision (Pc), and Pc needs to know how wrong the predicted positions might be. The free public catalogue "
     "of two-line element sets (TLEs) gives positions but no uncertainty at all. We estimate that uncertainty "
     "from the catalogue’s own history. For 300 objects in the 700–900 km shell we propagated each TLE with SGP4 "
-    "to the epoch of a later TLE of the same object, giving 145,467 residuals in the radial, along-track and "
-    "cross-track directions. The error scale grows roughly linearly with TLE age, and the along-track scale is "
+    "to the epoch of a later TLE of the same object, giving 145,467 residuals split along the three orbit "
+    "axes. The error scale grows roughly linearly with TLE age, and the along-track scale is "
     "about three times the other two. A Student-t distribution fits the standardised residuals much better "
     "than a Gaussian (AIC lower by 19,245 to 364,512; 7.1, 1.0 and 4.5 degrees of freedom), and its 95% "
     "intervals cover 95.0–96.9% of held-out residuals. A simulation shows that the Wilcoxon test we first used "
@@ -74,32 +74,35 @@ kw.add_run("space debris, collision probability, two-line elements, SGP4, Studen
 
 # ---------------- I. Introduction -----------------
 h1("Introduction")
-body("Working satellites in low Earth orbit share space with dead satellites, spent rocket stages and "
-     "fragments from old explosions and collisions. In 1978 Kessler and Cour-Palais [1] pointed out that "
-     "above a certain density, collisions produce new fragments faster than atmospheric drag removes them, "
-     "and the debris population then grows on its own. Avoiding even one collision therefore matters twice: "
-     "for the satellite, and for everyone else who uses that altitude.")
-body("For each predicted close approach (a conjunction), operators look at the probability of collision. "
-     "Pc is the chance that at the time of closest approach (TCA) the two objects are actually closer than "
-     "the sum of their radii. Since the predicted positions are uncertain, Pc is an integral of the position "
-     "error distribution over that small collision region. If it is above a threshold, often around 10⁻⁴ "
-     "[2], a manoeuvre is considered.")
+body("Low Earth orbit is crowded. Next to the satellites that still work there is far more junk: retired "
+     "spacecraft, upper stages left behind by launches, and pieces created when objects broke apart. Kessler "
+     "and Cour-Palais [1] warned that once this junk is dense enough, crashes make new pieces faster than the "
+     "thin upper atmosphere can pull them down, and the amount of debris then keeps rising by itself. "
+     "Preventing a single crash therefore helps twice: it saves the satellite, and it keeps the altitude "
+     "usable for everyone else.")
+body("When two objects are predicted to pass near each other, an event called a conjunction, the number an "
+     "operator watches is Pc. It answers one question: at the moment the two are nearest (TCA), how likely "
+     "is it that the real gap between their centres is smaller than their two sizes added together? Neither "
+     "position is known exactly, so answering it means integrating the error distribution over that tiny "
+     "region. A value of about 10⁻⁴ or more [2] usually starts a discussion about moving the satellite.")
 body("The catch is the error distribution. Satellite operators who track their own spacecraft get a "
-     "covariance with every orbit estimate. Everybody else has to use the public TLE catalogue from the US "
-     "Space Surveillance Network, distributed by Space-Track [5]. TLEs are mean elements for the SGP4 model "
-     "[3], [4], and they come with no uncertainty information. So a student, a researcher or a small operator "
+     "covariance with every orbit estimate. Everyone else depends on the public catalogue that the US "
+     "military tracking network releases through Space-Track [5]. Its two-line element sets are averaged "
+     "orbital elements meant to be fed into the SGP4 propagator [3], [4], and not one of them says how "
+     "accurate it is. So a student, a researcher or a small operator "
      "computing Pc from public data has to guess a covariance, usually a Gaussian with hand-picked standard "
      "deviations, and the answer is only as good as the guess.")
 body("Our idea is to stop guessing and learn the error from the catalogue itself. An object’s TLE is "
      "updated every few hours to days. If we take an older TLE, propagate it to the time of a newer one and "
      "compare, the difference is exactly the error someone using the older TLE would have made. Doing this "
-     "145,467 times gives enough data to model the error properly. In this paper we (i) fit how the error "
-     "grows with TLE age in the radial, along-track and cross-track directions; (ii) test whether it is "
-     "Gaussian, using maximum likelihood, AIC, goodness-of-fit statistics, a held-out calibration check and a "
-     "simulation of Type I and Type II errors, and find that it is strongly heavy-tailed; and (iii) screen the "
-     "catalogue for satellite–debris conjunctions and compute Pc for each one, exactly for the Gaussian model "
-     "and by Monte Carlo and importance sampling with Bayesian intervals for the heavy-tailed one, before "
-     "adding the probabilities up with a Poisson model.")
+     "145,467 times gives enough data to model the error properly. The work has three parts. First, we "
+     "measure how fast the error grows as a TLE gets older, separately along the three orbit axes defined in "
+     "Section IV. Second, we ask whether the error is normally distributed, with likelihood fits, AIC, "
+     "goodness-of-fit distances, a check on held-out data and a simulation of how often our test makes each "
+     "kind of mistake; it is not, because its tails are far too heavy. Third, we search the catalogue for "
+     "close satellite–debris passes and compute Pc for every one, exactly for the normal model and by Monte "
+     "Carlo and importance sampling, with Bayesian intervals, for the heavy-tailed one, and finally combine "
+     "the probabilities in a Poisson model.")
 body("Section II states the problem and Section III reviews earlier work. Section IV covers the data and "
      "the methods, Section V the results, Section VI what they mean and where they fall short, and Section VII "
      "concludes.")
@@ -108,9 +111,9 @@ body("Section II states the problem and Section III reviews earlier work. Sectio
 h1("Problem Statement")
 body("Take a satellite and a debris object with predicted positions r₁ and r₂ at TCA and relative velocity "
      "v. Looking along v, the encounter plane is perpendicular to it, and in that plane the predicted miss "
-     "vector μ has two components. The true miss vector is μ plus the position errors of both objects. If it "
-     "falls inside a circle whose radius R is the sum of the two hard-body radii, the objects collide. Pc is "
-     "the probability of that event, written out in (13).")
+     "vector μ has two components. The true miss vector is μ plus the position errors of both objects. A hit "
+     "happens when this true vector ends up within a distance R of the origin, where R adds up the sizes we "
+     "give the two objects; (13) states the probability of that.")
 body("To evaluate (13) we need the error distribution of each object at the age its TLE has reached at TCA. "
      "Our problem is therefore: using nothing but public TLEs, estimate that distribution and use it to get "
      "collision probabilities we can trust. In statistical terms this splits into three questions. (a) How "
@@ -124,13 +127,13 @@ body("We restrict ourselves to the 700–900 km shell, which is crowded and full
 # ---------------- III. Literature review -----------------
 h1("Literature Review")
 h2("TLE accuracy and error estimation")
-body("SGP4 and its companion models were first documented in Spacetrack Report No. 3 [3]. Vallado et al. "
-     "[4] later cleaned up the code, fixed differences between versions and published a reference "
-     "implementation, which is the one we use. Since TLEs have no covariance, their accuracy has been "
+body("The SGP4 propagator was described in Spacetrack Report No. 3 [3]. In 2006 Vallado et al. [4] "
+     "released a corrected and consistent version of the code, and that version is what our scripts call. "
+     "Since TLEs have no covariance, their accuracy has been "
      "estimated indirectly. Flohrer, Krag and Klinkrad [6] did it for whole snapshots of the US catalogue by "
-     "fitting orbits to pseudo-observations made from the TLEs, and sorted objects into classes with typical "
-     "radial, along-track and out-of-plane errors for ESA’s risk assessments. Osweiler [7] built covariance "
-     "matrices for individual satellites from the differences between TLEs over two weeks. Geul, Mooij and "
+     "fitting orbits to pseudo-observations made from the TLEs, and grouped the objects into accuracy classes "
+     "that ESA uses when it assesses collision risk. Osweiler [7] estimated covariances for single satellites "
+     "from two weeks of TLE-to-TLE differences. Geul, Mooij and "
      "Noomen [8] made the differencing idea robust with weighted least squares, estimated both the starting "
      "uncertainty and how fast it grows, and checked the result against GPS orbits of GOCE.")
 body("So TLE differencing is an accepted way to measure TLE error, and it is known that the error grows "
@@ -138,21 +141,23 @@ body("So TLE differencing is an accepted way to measure TLE error, and it is kno
      "treats the error as Gaussian. None of them takes the learned distribution on to a collision "
      "probability.")
 h2("Collision probability methods")
-body("The Pc used in operations goes back to Foster and Estes [9]. If the two objects move in nearly "
-     "straight lines during the short encounter, the three-dimensional problem collapses to a 2D integral "
-     "over the hard-body circle in the encounter plane. Akella and Alfriend [10] derived the collision "
+body("The Pc used in operations goes back to Foster and Estes [9]. A conjunction lasts only a moment, so "
+     "the relative motion can be treated as a straight line, and the volume integral shrinks to an area "
+     "integral over a disk in the plane at right angles to the relative velocity. Akella and Alfriend [10] "
+     "derived the collision "
      "probability for Gaussian uncertainty in this setting, Alfano [11] turned the double integral into a "
      "single one evaluated with Simpson’s rule, and Chan [12] wrote a full treatment with series solutions. "
      "Every one of these methods assumes Gaussian errors. The covariance is then the only input that counts, "
      "and heavy tails are simply not part of the model.")
 h2("Statistical tools")
-body("For data with outliers, Lange, Little and Taylor [13] recommended the Student-t distribution with "
-     "estimated degrees of freedom in place of the normal; the normal is its limit as the degrees of freedom "
-     "grow. To compare models we use Akaike’s information criterion [14], which rewards likelihood and "
-     "penalises extra parameters, and the Wilcoxon signed-rank test [15] for paired differences. Collisions "
-     "are rare events, so plain Monte Carlo is slow, and importance sampling [16] speeds it up by sampling "
-     "mostly where the event happens. For a proportion of hits, Brown, Cai and DasGupta [17] show that the "
-     "Jeffreys interval behaves well even when there are very few hits.")
+body("Lange, Little and Taylor [13] showed that fitting a t distribution, and letting the data choose its "
+     "degrees of freedom, makes estimates resistant to outliers; pushing that parameter to infinity gives "
+     "back the normal curve. To choose between models we use Akaike’s criterion [14], which trades fit "
+     "against the number of parameters, and the Wilcoxon signed-rank test [15] when two models are compared "
+     "residual by residual. Because a collision almost never happens, a naive simulation wastes nearly all "
+     "of its draws; importance sampling [16] puts the draws where hits occur and corrects with weights. When "
+     "an estimate is a share of hits, Brown, Cai and DasGupta [17] found the Jeffreys interval reliable even "
+     "with only a handful of hits.")
 table("Related work and the gap each leaves",
       ["Ref.", "Contribution", "Gap for this work"],
       [["[3], [4]", "SGP4 model and reference code", "Positions only, no uncertainty"],
@@ -199,12 +204,13 @@ table("Dataset summary",
 h2("Residuals in the orbital frame")
 body("For each TLE we picked up to two newer TLEs of the same object at random, between 0.1 and 7 days "
      "later. Two per TLE keeps the data set a manageable size while still spreading the ages over the whole "
-     "range. The older TLE is propagated with SGP4 to the epoch t₂ of the newer one, and the newer TLE’s "
-     "position, the best reference we have, is subtracted to give the residual Δr in (1); t is the TLE age. "
-     "Orbit errors behave very differently in the three natural directions of an orbit, so Δr is resolved "
-     "into radial (R), along-track (T) and cross-track (N) components using the axes in (2), which gives (3).")
+     "range. We run SGP4 on the older TLE up to the newer TLE’s epoch t₂ and compare with the newer TLE’s own "
+     "position, the closest thing to the truth we have; the difference is Δr in (1), and t is the TLE age. "
+     "An error up or down, an error forward or back along the path, and an error sideways out of the orbit "
+     "plane have different causes, so Δr is split along the radial (R), along-track (T) and cross-track (N) "
+     "axes of (2), which gives the three numbers in (3).")
 eq("Δr = r_new(t₂) − SGP4(TLE₁, t₂),   t = t₂ − t₁", 1)
-eq("R̂ = r/‖r‖,  N̂ = (r × v)/‖r × v‖,  T̂ = N̂ × R̂", 2)
+eq("unit vectors: R̂ ∥ r,  N̂ ∥ r × v,  T̂ = N̂ × R̂", 2)
 eq("(δ_R, δ_T, δ_N) = (R̂·Δr, T̂·Δr, N̂·Δr)", 3)
 
 h2("Age-dependent error scale")
@@ -215,36 +221,38 @@ body("Older TLEs should be less accurate. We model the spread with the power law
      "straight-line fit of log scale against log age (6) then gives a_j, the scale at one day, and the "
      "growth exponent b_j.")
 eq("σ_j(t) = a_j · t^{b_j},   j ∈ {R, T, N}", 4)
-eq("σ̂_j = 1.4826 · median_i |δ_ij − median(δ_j)|", 5)
-eq("log σ̂_j = log a_j + b_j log t", 6)
+eq("σ̂_j = 1.4826 × MAD(δ_j)   (MAD: median absolute deviation)", 5)
+eq("ln σ̂_j(t) ≈ ln a_j + b_j · ln t", 6)
 
 h2("Distribution models and maximum likelihood")
 body("Dividing each residual by the scale for its age (7) removes the age effect, so all standardised "
-     "residuals z of one direction can be pooled to study their shape. We fitted two candidates. The "
-     "Gaussian (8) has a mean μ and a standard deviation σ. The Student-t (9) has a location m, a scale s and "
-     "ν degrees of freedom; a small ν means heavy tails, and as ν grows it turns into the Gaussian. In effect "
+     "residuals z of one direction can be pooled to study their shape. Two shapes were tried. The normal "
+     "model (8) needs only a centre μ and a spread σ. The t model (9) adds a third number, ν: when ν is small "
+     "the tails are fat, and when it is large the curve can hardly be told apart from the normal. In effect "
      "the data decide how much tail they need. Both models were fitted by maximising the log-likelihood (10): "
      "the Gaussian has a closed-form solution, and the Student-t was fitted numerically with BFGS in R. Our "
      "first fit forced ν > 2, so that the variance exists, and the along-track estimate got stuck exactly at "
      "that bound. We removed the restriction, and ν then settled at about 1. The models are compared with AIC "
-     "(10), where k is the number of parameters (2 or 3) and lower is better.")
+     "(10); k counts the fitted parameters, two for the normal and three for t, and the smaller AIC wins.")
 eq("z = δ_j / σ_j(t)", 7)
 eq("f_N(z) = (1/(σ√(2π))) exp(−(z−μ)²/(2σ²))", 8)
-eq("f_t(z) = Γ((ν+1)/2) / (s√(νπ) Γ(ν/2)) · [1 + ((z−m)/s)²/ν]^{−(ν+1)/2}", 9)
+eq("f_t(z) ∝ (1/s) · (1 + (z − m)² / (ν s²))^{−(ν+1)/2}", 9)
 eq("θ̂ = argmax_θ Σ_i log f(z_i; θ),   AIC = 2k − 2 log L(θ̂)", 10)
 
 h2("Hypothesis tests, error rates and calibration")
-body("We also used three checks. The Kolmogorov–Smirnov statistic (11) is the largest gap between the "
-     "empirical distribution function F_n of z and the fitted F. Because the parameters come from the same "
-     "data, we read it as a description, not a formal test. Then, for each residual we took the difference in "
+body("We also used three checks. The Kolmogorov–Smirnov distance (11) measures how far the cumulative "
+     "curve of the data, F_n, strays from the fitted curve F at its worst point. F was fitted to these same "
+     "residuals, so we use D_n only to describe the fit, not to get a p-value. Then, for each residual we "
+     "took the difference in "
      "log density between the two models, d_i = log f_t(z_i) − log f_N(z_i), and applied the two-sided "
      "Wilcoxon signed-rank test [15] of H₀: d is centred at zero.")
-eq("D_n = sup_z |F_n(z) − F(z)|", 11)
-body("A test is only as good as its error rates, so we measured them. The Type I error is α = P(reject H₀ | "
-     "H₀ true), the Type II error is β = P(do not reject H₀ | H₁ true), and the power is 1 − β. We drew "
-     "samples of size n = 50, 100, 200, 500 and 1000 from the fitted Gaussian (H₀ true) and from the fitted "
-     "Student-t (H₁ true), refitted both models each time, ran the test at the 5% level, and counted "
-     "rejections over 1000 repetitions. The third check was calibration on data the models had not seen: "
+eq("D_n = largest |F_n(z) − F(z)| over all z", 11)
+body("A test is only as good as its error rates, so we measured them. Rejecting H₀ when it is in fact "
+     "true is a Type I error, with rate α; keeping H₀ when H₁ is in fact true is a Type II error, with rate "
+     "β, and 1 − β is the power. To estimate both we generated fake data sets of 50, 100, 200, 500 and 1000 "
+     "points, once from the fitted normal, where H₀ holds, and once from the fitted t, where H₁ holds, "
+     "refitted both models every time, ran the test at the 5% level, and counted rejections over 1000 "
+     "repetitions. The third check was calibration on data the models had not seen: "
      "the residuals were split at random 80/20, the models were fitted on the 80%, and we counted how many of "
      "the other 20% fell inside each model’s central 95% interval.")
 body("To see how much the Gaussian assumption changes actual decisions, we treated the Student-t Pc as the "
@@ -268,20 +276,21 @@ body("For screening we took a snapshot of the catalogue: the latest TLE of every
 body("In the encounter frame, z points along the relative velocity, x along the part of the satellite’s "
      "orbit normal that lies in the encounter plane, and y = z × x. For each object we take the R, T and N "
      "scales at its own TLE age, clamped to the fitted range of 0.1–7 days, as a diagonal covariance in its "
-     "orbital frame. This is rotated into inertial axes by the frame matrix M_k. The two errors are "
-     "independent, so the covariances add, and the sum is projected onto the encounter plane with the 3×2 "
-     "matrix P of the plane’s axes (12).")
+     "orbital frame. This is rotated into inertial axes by the frame matrix M_k. The two objects’ errors do "
+     "not depend on each other, so their covariances can be summed, and multiplying by P, whose two columns "
+     "are the plane’s x and y axes, gives the 2×2 covariance C in (12).")
 eq("C = Pᵀ(Σ₁ + Σ₂)P,   Σ_k = M_k diag(σ_R², σ_T², σ_N²) M_kᵀ", 12)
 
 h2("Collision probability")
-body("Following [9]–[12], Pc is the integral of the 2D miss-vector density over the hard-body circle (13), "
-     "written here for the Gaussian case with mean μ, the predicted miss vector, and covariance C. We use a "
-     "hard-body radius of 2.0 m for a satellite and 0.5 m for debris, so R = 2.5 m. For the Gaussian model "
+body("Equation (13) is the short-encounter formula of [9]–[12] for normal errors: a 2D normal density, "
+     "centred on the predicted miss vector μ with covariance C, integrated over a disk of radius R. We "
+     "assumed 2.0 m for every satellite and 0.5 m for every piece of debris, so R = 2.5 m; Section V tests "
+     "how much this choice matters. For the normal model "
      "we evaluate (13) by numerical quadrature in polar coordinates over the circle, with Gauss–Legendre "
      "points in radius and evenly spaced points in angle. The code passes eight tests against cases with a "
      "known answer and against Monte Carlo. The Student-t model has no closed form, so there Pc has to be "
      "estimated by sampling.")
-eq("Pc = ∬_{‖x‖≤R} (2π√|C|)⁻¹ exp(−½ (x−μ)ᵀ C⁻¹ (x−μ)) dx", 13)
+eq("Pc = ∬ over the disk ‖x‖ ≤ R of  N₂(x; μ, C) dx", 13)
 
 h2("Monte Carlo, importance sampling and Bayesian intervals")
 body("Plain Monte Carlo draws n miss vectors from the error model and counts the k that land inside the "
@@ -292,10 +301,10 @@ body("Plain Monte Carlo draws n miss vectors from the error model and counts the
      "drawn directly as location plus scale times a t variate with ν degrees of freedom, which still works "
      "when ν ≤ 2 and the variance is infinite.")
 eq("P̂c = k/n,   Var(P̂c) = Pc(1 − Pc)/n", 14)
-eq("P̂c,IS = (1/n) Σ_i 1{‖x_i‖ ≤ R} f(x_i)/g(x_i),   x_i ~ g", 15)
-body("For Monte Carlo we give a Bayesian credible interval. With a Jeffreys prior Beta(½, ½) on the hit "
-     "probability and k hits out of n, the posterior is the Beta distribution in (16), and its 2.5% and 97.5% "
-     "quantiles form a 95% interval that still makes sense when k is zero or tiny [17]. We report the "
+eq("P̂c,IS = mean over draws x_i ~ g of [hit(x_i) · f(x_i) / g(x_i)]", 15)
+body("For Monte Carlo we give a Bayesian credible interval. Starting from the Jeffreys prior Beta(½, ½) "
+     "and observing k hits in n draws, Bayes’ rule gives the Beta posterior in (16). Cutting 2.5% off each "
+     "end of it leaves a 95% credible interval that behaves sensibly even with no hits at all [17]. We report the "
      "posterior mean (k + ½)/(n + 1). One consequence caught us out at first: with no hits it equals "
      "½/(n + 1), not zero, so these values must not be added up across conjunctions.")
 eq("Pc | k ~ Beta(k + ½, n − k + ½)", 16)
@@ -363,15 +372,15 @@ body("The tails also spoil the Gaussian fit itself. Its standard deviation is pu
      "the fitted location is 0.94 scaled units.")
 
 h2("Held-out calibration")
-body("Table V shows the check on the 29,093 held-out residuals. The Student-t 95% intervals contain 96.9%, "
-     "95.8% and 95.0% of the radial, along-track and cross-track residuals, all within two points of the "
-     "target. The Gaussian intervals contain 98.0% and 98.2% radially and along-track, too many because the "
+body("Table V shows the check on the 29,093 held-out residuals. For the t model, 96.9% (R), 95.8% (T) and "
+     "95.0% (N) of these unseen residuals fall inside its 95% interval, never more than two points from the "
+     "goal. The Gaussian intervals contain 98.0% and 98.2% radially and along-track, too many because the "
      "inflated standard deviation makes them too wide, and 94.7% cross-track.")
 table("Coverage of 95% intervals on the 20% held-out residuals (n = 29,093)",
       ["Direction", "Gaussian", "Student-t"],
       [[k.capitalize(), pct(v[0]), pct(v[1])] for k, v in calib.items()], [1.1, 1.1, 1.1])
 
-h2("Type I and Type II error of the model test")
+h2("How often the model test is wrong")
 body("Table VI and Fig. 4 give the simulated rejection rates of the Wilcoxon test at the 5% level. With "
      "truly Gaussian data it should reject 5% of the time. It actually rejects about 10–15% of the time for n "
      "between 50 and 200 and 24–30% at n = 1000, two to six times too often, and the gap grows with the "
@@ -418,8 +427,8 @@ table("Exact Gaussian Pc over all conjunctions",
 top = pc.merge(conj[["conj_id", "miss_distance_km", "rel_speed_kms"]], on="conj_id").nlargest(5, "pc")
 body("Table VIII lists the five riskiest encounters. The top one, conjunction 183, passes at 169 m and "
      "11.8 km/s with Pc = 4.3×10⁻⁴. Pc does not simply follow the miss distance: conjunction 1198 passes "
-     "closer, at 118 m, yet its Pc is ten times smaller. The TLE ages of the two objects and the direction of "
-     "the combined covariance relative to the miss vector matter as much as the distance.")
+     "closer, at 118 m, yet its Pc is ten times smaller. How old the two TLEs are, and how the uncertainty "
+     "ellipse is turned compared with the miss direction, matter just as much as the distance.")
 table("Five highest-Pc conjunctions (Gaussian, exact)",
       ["ID", "Miss (m)", "Rel. speed (km/s)", "Pc"],
       [[int(r.conj_id), f"{1000 * r.miss_distance_km:.0f}", f"{r.rel_speed_kms:.2f}", f"{r.pc:.2e}"]
@@ -568,8 +577,8 @@ body("Next steps would be a better-matched importance-sampling proposal to tight
 # ---------------- Acknowledgment -----------------
 d.add_paragraph("Acknowledgment", style="Reference Head")
 p = d.add_paragraph(style="Text")
-r = p.add_run("The authors thank Prof. Pallavi Mishra for guidance on this project. TLE data were obtained from "
-              "Space-Track.org.")
+r = p.add_run("We are grateful to Prof. Pallavi Mishra for her guidance throughout this project, and to "
+              "Space-Track for free access to the TLE catalogue.")
 
 # ---------------- References -----------------
 d.add_paragraph("References", style="Reference Head")

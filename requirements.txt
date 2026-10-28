@@ -5,3 +5,4 @@ matplotlib
 sgp4
 requests
 tqdm
+python-docx
