@@ -1,10 +1,17 @@
 # OrbitRisk
 
-Data-driven Bayesian Monte Carlo estimation of satellite-debris collision probability.
-BAMAT207 Probability and Statistics course project. Track 4: Data Simulation (custom topic). Deadline: 25 Oct 2026.
+Data-driven estimation of satellite-debris collision probability from public TLE data.
+BAMAT207 Probability and Statistics course project (Prof. Pallavi Mishra), VIT Vellore. Track 4: Data Simulation (custom topic).
 
 **Idea in one line:** public TLE data has no position-uncertainty (covariance) information, so we learn the uncertainty from TLE history itself,
-then estimate collision probability with importance-sampled Monte Carlo and report Bayesian credible intervals.
+then estimate collision probability exactly (Gaussian) and with Monte Carlo and importance sampling (Student-t), with Bayesian credible intervals.
+
+**Main results** (full details in [report/OrbitRisk_IEEE_Report.pdf](report/OrbitRisk_IEEE_Report.pdf)):
+
+- TLE position error grows about linearly with TLE age; along-track error is about 3× radial and cross-track.
+- Errors are heavy-tailed: Student-t (ν = 7.1 radial, 1.0 along-track, 4.5 cross-track) beats the Gaussian on AIC and gives calibrated 95% intervals on held-out data.
+- 8,172 satellite-debris conjunctions in one week; maximum Gaussian Pc 4.3×10⁻⁴; 0.22% chance of at least one collision.
+- Under the Student-t model the total risk barely changes, but the risky encounters change: 38 exceed 10⁻⁵ instead of 18, and a Gaussian alert rule misses 23 of them (ROC AUC 0.995).
 
 ## Team and ownership
 
@@ -37,6 +44,11 @@ Always run from the repository root (the folder that contains `data/`, `python/`
 bash run_all.sh                    # whole pipeline, in the right order
 ```
 
+On Windows, run it from **Git Bash** with the virtual environment's Python and R on the path, for example
+`PYTHON=.venv/Scripts/python.exe bash run_all.sh`. The full run takes about **13.5 hours** on a laptop, mostly the
+10⁶-sample Monte Carlo checks and the R simulation study. All results are already committed in `data/processed/` and `figures/`,
+so nothing has to be rerun to read them. Running it again backs up the previous results in `data/processed/backups/` (not committed).
+
 Or one script at a time, in this order:
 
 | Step | Command | Reads | Writes |
@@ -44,23 +56,39 @@ Or one script at a time, in this order:
 | 1 | `python python/01_download.py` | Space-Track | `data/raw/catalog_snapshot.csv`, `data/raw/tle_history.csv` |
 | 2 | `python python/02_clean.py` | `tle_history.csv` | `data/processed/tle_clean.csv` |
 | 3 | `python python/03_residuals.py` | `tle_clean.csv` | `data/processed/residuals.csv` |
-| 4 | `Rscript r/10_error_model.R` | `residuals.csv` | `data/processed/params.csv` |
+| 4 | `Rscript r/10_error_model.R` | `residuals.csv` | `data/processed/params.csv`, `error_model_fit.csv` |
 | 5 | `python python/04_screen_conjunctions.py` | `catalog_snapshot.csv` | `data/processed/conjunctions.csv` |
 | 6 | `python python/05_exact_pc.py` | conjunctions, params | `data/processed/pc_exact.csv` |
-| 7 | `python python/06_monte_carlo.py` | conjunctions, params | `data/processed/pc_mc.csv` |
-| 8 | `python python/07_importance_sampling.py` | conjunctions, params | `data/processed/pc_is.csv` |
-| 9 | `python python/08_bayes_and_sensitivity.py` | MC results | `data/processed/pc_results.csv`, `pc_radius_sensitivity.csv` |
-| 10 | `Rscript r/11_gaussian_vs_learned_tests.R` | `pc_results.csv` | tables and `figures/` |
-| 11 | `Rscript r/12_poisson_fleet_model.R` | `conjunctions.csv` | tables and `figures/` |
-| 12 | `Rscript r/13_calibration.R` | `residuals.csv`, `params.csv` | tables and `figures/` |
-| 13 | `Rscript r/14_plots.R` | everything above | final `figures/` |
+| 7 | `python python/06_monte_carlo.py --backup-existing` | conjunctions, params | `data/processed/pc_mc.csv` |
+| 8 | `python python/generate_results.py --is-samples 100000 --checkpoints 1000 10000 100000 --backup-existing` | conjunctions, params, `pc_exact.csv`, `pc_mc.csv` | `pc_is.csv`, `pc_results.csv`, `pc_radius_sensitivity.csv`, `mc_convergence.csv` |
+| 9 | `Rscript r/11_gaussian_vs_learned_tests.R` | `residuals.csv`, `error_model_fit.csv` | `model_comparison_tests.csv`, `type_error_sim.csv`, `figures/` |
+| 10 | `Rscript r/12_poisson_fleet_model.R` | conjunctions, `pc_results.csv` | `data/processed/fleet_risk/` |
+| 11 | `Rscript r/13_calibration.R` | `residuals.csv` | `calibration_results.csv`, `figures/` |
+| 12 | `Rscript r/14_plots.R` | everything above | `roc_summary.csv`, final `figures/` |
 
-The exact column names of every CSV are fixed in [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md). Do not change a column name without telling the people who read that file.
+Step 8 runs the estimators of `07_importance_sampling.py` and `08_bayes_and_sensitivity.py` for every conjunction and combines
+all results; those two scripts can also be run on their own. The exact column names of every CSV are fixed in
+[docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md), and the Monte Carlo settings are described in
+[docs/MONTE_CARLO_METHODOLOGY.md](docs/MONTE_CARLO_METHODOLOGY.md).
 
-## Testing before Space-Track data is ready
+## Tests
 
-`python python/make_synthetic_tles.py` writes a FAKE `data/raw/tle_history.csv` so steps 2 and 3 (and the R scripts) can be tested.
-It is for testing only: never use fake data for results in the report. Delete `data/raw/tle_history.csv` before the real download.
+Run from the repository root; each prints `OK` (or `All checks passed.`):
+
+```bash
+python python/test_exact_pc.py
+python python/test_monte_carlo.py
+python python/test_importance_sampling.py
+python python/test_gaussian_log_weights.py
+python python/test_bayes_and_sensitivity.py
+python python/test_result_generation.py
+python python/test_pipeline.py        # runs run_all.sh twice on a small copy; needs Git Bash on Windows
+```
+
+## Report
+
+`report/OrbitRisk_IEEE_Report.docx` (and `.pdf`) is the IEEE-format paper. Its extra figures come from
+`python report/make_report_figures.py`, and `report/build/build_full.py` rebuilds the document from the committed results.
 
 ## Folder structure
 
@@ -77,11 +105,11 @@ orbitrisk/
   data/
     raw/                  downloaded TLEs (not committed, too big)
     processed/            hand-off CSVs between teammates (committed, small)
-  python/                 01_download.py ... 08_bayes_and_sensitivity.py, common.py, orbit_utils.py,
-                          make_synthetic_tles.py (fake data for testing only)
+  python/                 01_download.py ... 08_bayes_and_sensitivity.py, generate_results.py, common.py, orbit_utils.py,
+                          test_*.py (tests), make_synthetic_tles.py (fake data, for testing only)
   r/                      10_error_model.R ... 14_plots.R, common.R
-  figures/                every figure used in the report
-  report/                 IEEE paper, plagiarism report
+  figures/                figures produced by the pipeline
+  report/                 IEEE paper (.docx, .pdf), its build scripts and extra figures
 ```
 
 ## Shared settings
@@ -90,7 +118,7 @@ All project-wide numbers (number of objects, history length, altitude band, hard
 `python/common.py` and `r/common.R`. Change them there, never inside a script, so all three of us run with the same values.
 Hard-body radii and the alert threshold are assumptions: justify them in the report and vary them in the sensitivity study.
 
-## References to check before citing
+## Data source
 
-Vallado, Crawford, Hujsak and Kelso, "Revisiting Spacetrack Report #3" (SGP4); Foster and Estes, NASA/JSC-25898, 1992; F. K. Chan, "Spacecraft Collision Probability", 2008.
-Confirm every citation yourselves before it goes in the report.
+TLE data from Space-Track.org (18th Space Defense Squadron), https://www.space-track.org, API classes `gp` and `gp_history`
+(free account needed). The full reference list is in the report.
